@@ -1,6 +1,6 @@
 {
     inputs = rec {
-        ihp.url = "./ihp";
+        ihp.url = "path:ihp";
         nixpkgs.follows = "ihp/nixpkgs";
         flake-parts.follows = "ihp/flake-parts";
         devenv.follows = "ihp/devenv";
@@ -9,6 +9,7 @@
             url = "file+file:///dev/null";
             flake = false;
         };
+        ihp.inputs.devenv-root.follows = "devenv-root";
     };
 
     outputs = inputs@{ self, nixpkgs, ihp, flake-parts, systems, ... }:

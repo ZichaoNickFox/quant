@@ -1,0 +1,42 @@
+:set -i.
+:set -idev
+:set -iihp
+:set -iihp-ide
+:set -iihp-ssc
+:set -iwai-asset-path
+:set -iwai-flash-messages
+:set -threaded
+
+:set -XGHC2021
+
+:set -XOverloadedStrings
+:set -XNoImplicitPrelude
+:set -XImplicitParams
+:set -XDisambiguateRecordFields
+:set -XDuplicateRecordFields
+:set -XOverloadedLabels
+:set -XQuasiQuotes
+:set -XTypeFamilies
+:set -XPackageImports
+:set -XRecordWildCards
+:set -XDefaultSignatures
+:set -XFunctionalDependencies
+:set -XPartialTypeSignatures
+:set -XBlockArguments
+:set -XLambdaCase
+:set -XTemplateHaskell
+:set -XOverloadedRecordDot
+:set -XDataKinds
+:set -XUndecidableInstances
+:set -XMultiWayIf
+:set -XDerivingVia
+:set -XDeepSubsumption
+
+:set -Wno-unsafe -Wno-name-shadowing -Wno-monomorphism-restriction -Wno-safe -Wno-missing-local-signatures -Wno-missing-home-modules
+:set -Werror=missing-fields
+:set -fwarn-incomplete-patterns
+:set -Wno-ambiguous-fields
+:set -fprefer-byte-code
+:set -fbyte-code-and-object-code
+:set -O0
+:set -j
