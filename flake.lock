@@ -114,6 +114,18 @@
         "url": "file:///dev/null"
       }
     },
+    "devenv-root_2": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-d6xi4mKdjkX2JFicDIv5niSzpyI0m/Hnm8GGAIU04kY=",
+        "type": "file",
+        "url": "file:///dev/null"
+      },
+      "original": {
+        "type": "file",
+        "url": "file:///dev/null"
+      }
+    },
     "devenv_2": {
       "inputs": {
         "cachix": "cachix_2",
@@ -623,9 +635,7 @@
     "ihp": {
       "inputs": {
         "devenv": "devenv",
-        "devenv-root": [
-          "devenv-root"
-        ],
+        "devenv-root": "devenv-root_2",
         "flake-parts": "flake-parts_2",
         "ihp-boilerplate": "ihp-boilerplate",
         "nix-filter": "nix-filter_3",
@@ -633,14 +643,15 @@
         "systems": "systems_7"
       },
       "locked": {
-        "path": "ihp",
+        "lastModified": 1765117257,
+        "narHash": "sha256-shxGLqzib3Ss20HExwZv6q9Iw0DnvYKQMNmdnunzNZw=",
+        "path": "/Users/liuzichao/quant/IHP",
         "type": "path"
       },
       "original": {
-        "path": "ihp",
+        "path": "/Users/liuzichao/quant/IHP",
         "type": "path"
-      },
-      "parent": []
+      }
     },
     "ihp-boilerplate": {
       "inputs": {
