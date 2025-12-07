@@ -643,13 +643,13 @@
         "systems": "systems_7"
       },
       "locked": {
-        "lastModified": 1765117257,
-        "narHash": "sha256-shxGLqzib3Ss20HExwZv6q9Iw0DnvYKQMNmdnunzNZw=",
-        "path": "/Users/liuzichao/quant/IHP",
+        "lastModified": 1765124634,
+        "narHash": "sha256-Ra/X+6pMtzcduFsu74V3IqRz0PqI5VKFAUyfnxrqdGA=",
+        "path": "/Users/liuzichao/quant/ihp",
         "type": "path"
       },
       "original": {
-        "path": "/Users/liuzichao/quant/IHP",
+        "path": "/Users/liuzichao/quant/ihp",
         "type": "path"
       }
     },
