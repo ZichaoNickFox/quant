@@ -1,3 +1,2 @@
 #!/usr/bin/env bash
-nix flake update
 devenv up
