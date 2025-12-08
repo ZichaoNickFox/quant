@@ -6,31 +6,34 @@ import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Generated.Types
 import IHP.Controller.RequestContext
-import Web.Types
+import IHP.RouterSupport
+import Web.Controller.Backtest
 import Web.Routes
+import Web.Types
 import Application.Helper.View
 
 -- 主 layout
 defaultLayout :: Html -> Html
-defaultLayout inner = H.docTypeHtml ! A.lang "en" $ [hsx|
-<head>
-  {metaTags}
+defaultLayout inner = H.docTypeHtml ! A.lang "en" $
+  [hsx|
+    <head>
+      {metaTags}
 
-  {stylesheets}
-  {scripts}
+      {stylesheets}
+      {scripts}
 
-  <title>{pageTitleOrDefault "Quant Platform"}</title>
-</head>
+      <title>{pageTitleOrDefault "Quant Platform"}</title>
+    </head>
 
-<body>
-  {renderNavbar}
-  <div class="container-fluid mt-3">
-    {renderFlashMessages}
-    {inner}
-  </div>
-  {modal}
-</body>
-|]
+    <body>
+      {renderNavbar}
+      <div class="container-fluid mt-3">
+        {renderFlashMessages}
+        {inner}
+      </div>
+      {modal}
+    </body>
+  |]
 
 -- 顶部导航栏
 renderNavbar :: Html
@@ -43,27 +46,18 @@ renderNavbar = [hsx|
     <div class="collapse navbar-collapse" id="navmenu">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-            <a class={navClass StrategyAction} href={StrategyAction}>策略</a>
+            <a class="nav strategy" href={StrategyAction}>策略</a>
         </li>
         <li class="nav-item">
-            <a class={navClass DataHomeAction} href={DataHomeAction}>数据</a>
+            <a class="nav data" href={DataAction}>数据</a>
         </li>
         <li class="nav-item">
-            <a class={navClass BacktestHomeAction} href={BacktestHomeAction}>回测</a>
+            <a class="nav backtest" href={BacktestAction}>回测</a>
         </li>
+      </ul>
     </div>
   </nav>
-|]
-
--- 根据当前页面自动设置 nav active
-navClass :: (?context :: ControllerContext) => AutoRoute r => r -> Text
-navClass action =
-  if actionName == currentActionName
-    then "nav-link active"
-    else "nav-link"
-  where
-    actionName = tshow action
-    currentActionName = tshow currentAction
+  |]
 
 stylesheets :: Html
 stylesheets = [hsx|

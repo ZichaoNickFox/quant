@@ -7,8 +7,11 @@ import IHP.RouterSupport
 import IHP.FrameworkConfig
 import IHP.Job.Types
 
+import Web.Types
+import Web.FrontController
+
 instance FrontController RootApplication where
-    controllers = []
+    controllers = [ mountFrontController QuantApplication ]
 
 instance Worker RootApplication where
     workers _ = []

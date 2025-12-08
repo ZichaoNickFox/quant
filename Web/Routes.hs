@@ -5,11 +5,9 @@ import Web.Types
 
 -- Generator Marker
 instance AutoRoute StaticController
-instance AutoRoute SessionsController
-instance AutoRoute ChannelsController
 
+instance AutoRoute DataController
 
-instance AutoRoute MessagesController
+instance AutoRoute BacktestController
 
-
-instance AutoRoute UsersController
+instance AutoRoute StrategyController

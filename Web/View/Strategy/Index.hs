@@ -1,6 +1,6 @@
 module Web.View.Strategy.Index where
 
-import Web.View.Prelude
+import IHP.ViewPrelude
 
 data IndexView = IndexView
 

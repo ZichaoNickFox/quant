@@ -1,8 +1,9 @@
 module Web.Controller.Data where
 
-import Web.Controller.Prelude
+import IHP.ControllerPrelude
 import Web.View.Data.Index
+import Web.Types
 
 instance Controller DataController where
-    action DataHomeAction = do
-        render IndexView
+  action DataAction = do
+    render IndexView

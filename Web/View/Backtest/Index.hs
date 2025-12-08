@@ -1,5 +1,5 @@
 module Web.View.Backtest.Index where
-import Web.View.Prelude
+import IHP.ViewPrelude
 
 data IndexView = IndexView
 
