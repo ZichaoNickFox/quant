@@ -1,4 +1,4 @@
-module Web.Controller.Backtest where
+module Web.Controller.BacktestController where
 
 import IHP.ControllerPrelude
 import Web.View.Backtest.Index

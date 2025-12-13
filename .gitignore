@@ -23,3 +23,5 @@ Config/client_session_key.aes
 .devenv*
 devenv.local.nix
 .direnv
+
+.venv

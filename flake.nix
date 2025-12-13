@@ -23,10 +23,11 @@
           enable = true;
           projectPath = ./.;
           packages = with pkgs; [
-              # Native dependencies, e.g. imagemagick
+            # Native dependencies, e.g. imagemagick
           ];
           haskellPackages = p: with p; [
             # Haskell dependencies go here
+            async
             p.ihp
             cabal-install
             base
@@ -40,14 +41,44 @@
 
         # Custom configuration that will start with `devenv up`
         devenv.shells.default = {
-            # Start Mailhog on local development to catch outgoing emails
-            # services.mailhog.enable = true;
+          # Start Mailhog on local development to catch outgoing emails
+          # services.mailhog.enable = true;
+          packages = [
+            pkgs.python3
+            pkgs.nodejs_22
+          ];
+          enterShell = ''
+            # python
+            # 如果还没有 .venv，就创建并安装依赖
+            echo "enterShell"
+            if [ ! -d .venv ]; then
+              echo "[devenv] creating .venv and installing akshare/tushare ..."
+              python3 -m venv .venv
+              source .venv/bin/activate
+              pip install --upgrade pip wheel setuptools
+              pip install akshare tushare
+            else
+              echo "[devenv] using existing .venv"
+              source .venv/bin/activate
+            fi
 
-            # Custom processes that don't appear in https://devenv.sh/reference/options/
-            processes = {
-              # Uncomment if you use tailwindcss.
-              # tailwind.exec = "tailwindcss -c tailwind/tailwind.config.js -i ./tailwind/app.css -o static/app.css --watch=always";
-            };
+            # js
+            if [ ! -f package.json ]; then
+              echo '[devenv] init package.json'
+              npm init -y >/dev/null 2>&1
+            fi
+
+            if [ ! -d node_modules ]; then
+              echo '[devenv] installing lightweight-charts ...'
+              npm install --save lightweight-charts
+            fi
+          '';
+
+          # Custom processes that don't appear in https://devenv.sh/reference/options/
+          processes = {
+            # Uncomment if you use tailwindcss.
+            # tailwind.exec = "tailwindcss -c tailwind/tailwind.config.js -i ./tailwind/app.css -o static/app.css --watch=always";
+          };
         };
       };
 

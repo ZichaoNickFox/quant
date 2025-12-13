@@ -1,4 +1,4 @@
-module Web.Controller.Static where
+module Web.Controller.StaticController where
 
 import IHP.ControllerPrelude
 import Web.View.Static.Index

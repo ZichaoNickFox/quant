@@ -7,7 +7,7 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Generated.Types
 import IHP.Controller.RequestContext
 import IHP.RouterSupport
-import Web.Controller.Backtest
+import Web.Controller.BacktestController
 import Web.Routes
 import Web.Types
 import Application.Helper.View
@@ -46,10 +46,13 @@ renderNavbar = [hsx|
     <div class="collapse navbar-collapse" id="navmenu">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-            <a class="nav strategy" href={StrategyAction}>策略</a>
+            <a class="nav data" href={DataAction}>数据</a>
         </li>
         <li class="nav-item">
-            <a class="nav data" href={DataAction}>数据</a>
+            <a class="nav note" href={NoteAction}>笔记</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav strategy" href={StrategyAction}>策略</a>
         </li>
         <li class="nav-item">
             <a class="nav backtest" href={BacktestAction}>回测</a>

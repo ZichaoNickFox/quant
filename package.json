@@ -1,0 +1,15 @@
+{
+  "name": "quant",
+  "version": "1.0.0",
+  "description": "This is an IHP (Integrated Haskell Platform) project with GitHub Actions for testing and deployment. For more information about IHP, see the [IHP Documentation](https://ihp.digitallyinduced.com/Guide/).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "lightweight-charts": "^5.0.9"
+  }
+}

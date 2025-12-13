@@ -8,6 +8,8 @@ instance AutoRoute StaticController
 
 instance AutoRoute DataController
 
-instance AutoRoute BacktestController
+instance AutoRoute NoteController
 
 instance AutoRoute StrategyController
+
+instance AutoRoute BacktestController

@@ -1,4 +1,4 @@
-module Web.Controller.Strategy where
+module Web.Controller.StrategyController where
 
 import IHP.ControllerPrelude
 import Web.View.Strategy.Index

@@ -4,22 +4,23 @@ import IHP.RouterPrelude
 import IHP.ControllerPrelude
 import IHP.LoginSupport.Middleware
 
-import Web.View.Layout (defaultLayout)
-
 -- Controllers
-import Web.Controller.Strategy
-import Web.Controller.Data
-import Web.Controller.Backtest
-import Web.Controller.Static
+import Web.Controller.StaticController
+import Web.Controller.StrategyController
+import Web.Controller.NoteController
+import Web.Controller.DataController
+import Web.Controller.BacktestController
 import Web.Types
+import Web.View.Layout (defaultLayout)
 
 instance FrontController QuantApplication where
   controllers =
     [ startPage StrategyAction
-    , parseRoute @StrategyController
-    , parseRoute @DataController
-    , parseRoute @BacktestController
     , parseRoute @StaticController
+    , parseRoute @DataController
+    , parseRoute @NoteController
+    , parseRoute @StrategyController
+    , parseRoute @BacktestController
     ]
 
 instance InitControllerContext QuantApplication where
