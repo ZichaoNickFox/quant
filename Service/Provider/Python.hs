@@ -1,4 +1,4 @@
-module Data.Python
+module Service.Provider.Python
   ( runPython
   ) where
 

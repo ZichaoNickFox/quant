@@ -4,9 +4,12 @@ CREATE TYPE CELL_TYPE AS ENUM ('raw', 'image', 'backtest');
 CREATE TYPE SYMBOL_TYPE AS ENUM ('stock', 'etf', 'future', 'option', 'fund');
 CREATE TABLE symbol (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
-    code TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL,
     name TEXT NOT NULL,
-    symbol_type SYMBOL_TYPE NOT NULL
+    symbol_type SYMBOL_TYPE NOT NULL,
+    list_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    delist_date TIMESTAMP WITHOUT TIME ZONE,
+    UNIQUE(code, symbol_type)
 );
 CREATE TABLE basket_tree (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
@@ -47,7 +50,7 @@ CREATE TABLE strategy_tree (
 CREATE TABLE strategy_cell (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
     cell_id UUID,
-    position INT DEFAULT 0 NOT NULL
+    "position" INT DEFAULT 0 NOT NULL
 );
 CREATE TABLE note (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL
@@ -55,5 +58,5 @@ CREATE TABLE note (
 CREATE TABLE note_cell (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
     cell_id UUID,
-    position INT DEFAULT 0 NOT NULL
+    "position" INT DEFAULT 0 NOT NULL
 );

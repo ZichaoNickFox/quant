@@ -12,14 +12,15 @@ getSymbolsHtml symbolsByType = [hsx|
       {forEach (keys symbolsByType) symbolsOfType}
     </div>
   |]
-  where symbolsOfType :: SymbolType -> Html
-        symbolsOfType symbolType =
-          let symbols = symbolsByType ! symbolType
-          in  [hsx|
-                <span>{show symbolType}: {length symbols}</span>
+  where
+    symbolsOfType :: SymbolType -> Html
+    symbolsOfType symbolType =
+      let symbols = symbolsByType ! symbolType
+      in  [hsx|
+            <span>{show symbolType}: {length symbols}</span>
 
-                <form method="get" action={DataActionGetSymbols}>
-                  <input type="hidden" name="symbolType" value={inputValue symbolType} />
-                  <button type="submit">Update</button>
-                </form>
-              |]
+            <form method="get" action={DataActionGetSymbols}>
+              <input type="hidden" name="symbolType" value={inputValue symbolType} />
+              <button type="submit">Update</button>
+            </form>
+          |]

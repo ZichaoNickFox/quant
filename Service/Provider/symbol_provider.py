@@ -1,6 +1,7 @@
 import akshare as ak
 import tushare as ts
 import pandas as pd
+from datetime import datetime
 import json
 import sys
 
@@ -22,18 +23,31 @@ def refactor_df_column(df, symbol_column_name, name_column_name, symbol_suffix):
       }
     )
 
-# 所有股票 https://www.tushare.pro/document/2?doc_id=25
+# yyyymmdd_to_iso
+def yyyymmdd_to_iso(string):
+    """
+    Convert 'YYYYMMDD' -> 'YYYY-MM-DDT00:00:00'
+    Return None for None / NaN / empty
+    """
+    if string is None:
+      return None
+    else:
+      return datetime.strptime(string, "%Y%m%d").strftime("%Y-%m-%dT%H:%M:%S")
+
+# all stock https://www.tushare.pro/document/2?doc_id=25
 def stock_basic():
   pro = ts.pro_api()
-  df = pd.DataFrame(pro.stock_basic(exchange='', list_status='L', fields=['ts_code', 'name']))
-  symbols = [{"code" : row[0], "name" : row[1], "symbol_type" : "stock"} for row in df.itertuples(index=False)]
+  df = pd.DataFrame(pro.stock_basic(exchange='', list_status='L', fields=['ts_code', 'name', 'list_date', 'delist_date']))
+  symbols = [{"code" : row[0], "name" : row[1], "symbol_type" : "stock", "list_date" : yyyymmdd_to_iso(row[2]), "delist_date" : yyyymmdd_to_iso(row[3])}
+             for row in df.itertuples(index=False)]
   return symbols
 
-# ETF https://tushare.pro/document/2?doc_id=385
+# All etf https://tushare.pro/document/2?doc_id=385
 def etf_basic():
   pro = ts.pro_api()
-  df = pd.DataFrame(pro.etf_basic(exchange='', list_status='L', fields=['ts_code', 'extname']))
-  symbols = [{"code" : row[0], "name" : row[1], "symbol_type" : "etf"} for row in df.itertuples(index=False)]
+  df = pd.DataFrame(pro.etf_basic(exchange='', list_status='L', fields=['ts_code', 'extname', 'list_date']))
+  symbols = [{"code" : row[0], "name" : row[1], "symbol_type" : "etf",  "list_date" : yyyymmdd_to_iso(row[2]), "delist_date" : yyyymmdd_to_iso(None)}
+             for row in df.itertuples(index=False)]
   return symbols
 
 # 上证股票列表 https://akshare.akfamily.xyz/data/stock/stock.html#id229

@@ -15,7 +15,7 @@ selectSymbolHtml symbolsByType =
       <form method="get" action={DataAction}>
         <input
           type="text"
-          name="code"
+          name="symbolCode"
           list="symbol-list"
           placeholder="输入代码或选择"
           onfocus="this.value='';"

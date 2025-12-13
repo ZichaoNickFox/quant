@@ -45,7 +45,6 @@
           # services.mailhog.enable = true;
           packages = [
             pkgs.python3
-            pkgs.nodejs_22
           ];
           enterShell = ''
             # python
@@ -60,17 +59,6 @@
             else
               echo "[devenv] using existing .venv"
               source .venv/bin/activate
-            fi
-
-            # js
-            if [ ! -f package.json ]; then
-              echo '[devenv] init package.json'
-              npm init -y >/dev/null 2>&1
-            fi
-
-            if [ ! -d node_modules ]; then
-              echo '[devenv] installing lightweight-charts ...'
-              npm install --save lightweight-charts
             fi
           '';
 
