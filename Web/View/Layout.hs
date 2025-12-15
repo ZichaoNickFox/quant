@@ -1,43 +1,39 @@
 module Web.View.Layout (defaultLayout, Html) where
 
-import IHP.ViewPrelude
-import IHP.Environment
+import           Application.Helper.View
 import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Generated.Types
-import IHP.Controller.RequestContext
-import IHP.RouterSupport
-import Web.Controller.BacktestController
-import Web.Routes
-import Web.Types
-import Application.Helper.View
+import           Web.Controller.BacktestController
+import           Web.Controller.DataController
+import           Web.Controller.NoteController
+import           Web.Controller.StrategyController
+import           Web.Prelude
+import           Web.Types
 
 -- 主 layout
 defaultLayout :: Html -> Html
-defaultLayout inner = H.docTypeHtml ! A.lang "en" $
+defaultLayout innerHtml = H.docTypeHtml H.! A.lang "en" $
   [hsx|
     <head>
       {metaTags}
-
       {stylesheets}
       {scripts}
-
       <title>{pageTitleOrDefault "Quant Platform"}</title>
     </head>
 
     <body>
-      {renderNavbar}
+      {navHtml}
       <div class="container-fluid mt-3">
         {renderFlashMessages}
-        {inner}
+        {innerHtml}
       </div>
       {modal}
     </body>
   |]
 
 -- 顶部导航栏
-renderNavbar :: Html
-renderNavbar = [hsx|
+navHtml :: Html
+navHtml = [hsx|
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
     <a class="navbar-brand" href="/">Quant</a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navmenu">

@@ -1,4 +1,4 @@
-module Data.GetCandles
+module Web.Provider.CandleProvider
   ( getCandles
   ) where
 

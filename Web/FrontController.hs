@@ -1,29 +1,20 @@
 module Web.FrontController where
 
-import IHP.RouterPrelude
-import IHP.ControllerPrelude
-import IHP.LoginSupport.Middleware
-
--- Controllers
-import Web.Controller.StaticController
-import Web.Controller.StrategyController
-import Web.Controller.NoteController
-import Web.Controller.DataController
-import Web.Controller.BacktestController
+import Web.Prelude
 import Web.Types
-import Web.View.Layout (defaultLayout)
+import Web.View.Layout
 
-instance FrontController QuantApplication where
+instance FrontController WebApplication where
   controllers =
     [ startPage StrategyAction
-    , parseRoute @StaticController
     , parseRoute @DataController
     , parseRoute @NoteController
     , parseRoute @StrategyController
     , parseRoute @BacktestController
+    -- , parseRoute @JobsDashboardController () [UpdateSymbolJob, DownloadCandleJob]
     ]
 
-instance InitControllerContext QuantApplication where
+instance InitControllerContext WebApplication where
   initContext = do
     setLayout defaultLayout
     initAutoRefresh

@@ -1,8 +1,8 @@
 module Web.Controller.NoteController where
 
-import IHP.ControllerPrelude
-import Web.View.Note.Index
+import Web.Prelude
 import Web.Types
+import Web.View.Note.Index
 
 instance Controller NoteController where
   action NoteAction = do

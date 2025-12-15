@@ -3,13 +3,12 @@ module Web.View.Data.DataView where
 import Data.Map
 import Data.Maybe
 import Data.Text hiding (length)
-import Generated.Types
-import IHP.ViewPrelude hiding (Symbol)
-import IHP.ViewSupport
+import Web.Prelude
 import Web.View.Data.GetSymbolsHtml
 import Web.View.Data.SelectSymbolHtml
 import Web.View.Data.CandleChartHtml
 import Web.View.DebugHtml
+import Web.Types
 
 data DataView = DataView
   { symbolsByType :: Map SymbolType [Symbol]

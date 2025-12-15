@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import json
 import sys
+import os
 
 def dump(category, content):
   print(category, content, file=sys.stderr)
@@ -266,7 +267,10 @@ def get_symbol(symbol_type):
     dump("get_symbol.py", "error symbol_type : " + repr(symbol_type))
 
 if __name__ == "__main__":
-  ts.set_token("0f050ad60cba4e44f5f218638e678030e1257b87246b6203e9c1e749")
+  token = os.environ.get("TUSHARE_TOKEN")
+  if not token:
+    raise RuntimeError("TUSHARE_TOKEN not set")
+  ts.set_token(token)
   symbol_type = ""
   if len(sys.argv) > 1:
     symbol_type = json.loads(sys.argv[1])

@@ -1,9 +1,7 @@
 module Web.View.Data.GetSymbolsHtml where
 
 import Data.Map
-import Generated.Types
-import IHP.ViewPrelude hiding (Symbol, (!))
-import Web.Routes
+import Web.Prelude
 import Web.Types
 
 getSymbolsHtml :: Map SymbolType [Symbol] -> Html

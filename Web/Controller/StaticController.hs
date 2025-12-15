@@ -1,8 +1,8 @@
 module Web.Controller.StaticController where
 
-import IHP.ControllerPrelude
-import Web.View.Static.Index
+import Web.Prelude
 import Web.Types
+import Web.View.Static.Index
 
 instance Controller StaticController where
   action StaticAction = do

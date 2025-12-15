@@ -29,6 +29,8 @@
             # Haskell dependencies go here
             async
             p.ihp
+            p.ihp-ide
+            p.ihp-job-dashboard
             cabal-install
             base
             wai

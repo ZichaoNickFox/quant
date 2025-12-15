@@ -1,4 +1,4 @@
-module Service.Provider.Python
+module Web.Provider.Python
   ( runPython
   ) where
 
@@ -7,14 +7,13 @@ import           Data.Bool
 import           Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as TextEncoding
-import           IHP.Controller.Context
 import           IHP.Log
 import           IHP.Prelude hiding (error)
 import           Prelude hiding (error)
 import           System.Exit
 import           System.Process
 
-runPython :: (?context :: ControllerContext, LoggingProvider ControllerContext, FromJSON result, ToJSON parameter)
+runPython :: (?context :: context, LoggingProvider context, FromJSON result, ToJSON parameter)
           => Text.Text -> parameter -> Bool -> IO (Maybe result)
 runPython scriptFullpath parameter printPythonLog = do
   let parameterJSON = LBS.unpack (encode parameter) :: String

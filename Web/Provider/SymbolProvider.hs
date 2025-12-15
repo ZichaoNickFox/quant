@@ -1,8 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Service.Provider.SymbolProvider
-  ( provideSymbols
-  , provideSymbolsSQL
+module Web.Provider.SymbolProvider
+  ( downloadSymbols
   ) where
 
 import           Data.Aeson
@@ -16,17 +15,13 @@ import           Database.PostgreSQL.Simple.ToRow (ToRow(..))
 import           Database.PostgreSQL.Simple.Types (Query (..))
 import           Generated.Types
 import           GHC.Generics
-import           IHP.Controller.Context
-import           IHP.HaskellSupport
-import           IHP.Log
-import           IHP.Log.Types
-import           IHP.ModelSupport
-import           Prelude
-import           Service.Provider.Python
+import           Web.Prelude
+import           Web.Provider.Python
 
 instance ToJSON SymbolType where
   toJSON = \case
     Stock  -> "stock"
+    Index  -> "index"
     Etf    -> "etf"
     Future -> "future"
     Option -> "option"
@@ -35,11 +30,12 @@ instance ToJSON SymbolType where
 instance FromJSON SymbolType where
   parseJSON = withText "SymbolType" $ \case
     "stock"  -> pure Stock
+    "index"  -> pure Index
     "etf"    -> pure Etf
     "future" -> pure Future
     "option" -> pure Option
     "fund"   -> pure Fund
-    other    -> fail $ "Unknown SymbolType: " <> show other
+    other    -> fail $ "Unknown SymbolType: " <> (unpack $ show other)
 
 instance FromJSON Symbol where
   parseJSON = withObject "Symbol" $ \o -> do
@@ -64,13 +60,8 @@ instance ToRow Symbol where
     , toField (get #delistDate s)
     ]
 
-provideSymbols :: (?context :: ControllerContext, LoggingProvider ControllerContext) => SymbolType -> IO [Symbol]
-provideSymbols symbolType = do
+downloadSymbols :: (?context :: FrameworkConfig) => SymbolType -> IO [Symbol]
+downloadSymbols symbolType = do
   result <- fromJust <$> (runPython "Service/Provider/symbol_provider.py" symbolType False :: IO (Maybe [Symbol]))
-  info $ "[provideSymbols] nums - " <> show (length result)
+  logInfo $ "[provideSymbols] nums - " <> show (length result)
   return result
-
-provideSymbolsSQL :: IO Query
-provideSymbolsSQL = do
-  sql <- readFile "Service/Provider/SymbolProvider.sql"
-  return $ Query (cs sql)

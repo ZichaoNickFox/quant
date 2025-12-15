@@ -3,9 +3,7 @@ module Web.View.Data.SelectSymbolHtml where
 import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Text hiding (concat)
-import           Generated.Types
-import           IHP.ViewPrelude hiding (concat, Symbol)
-import           Web.Routes
+import           Web.Prelude
 import           Web.Types
 
 selectSymbolHtml :: Map SymbolType [Symbol] -> Html

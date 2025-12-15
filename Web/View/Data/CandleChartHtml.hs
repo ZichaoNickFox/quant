@@ -1,8 +1,6 @@
 module Web.View.Data.CandleChartHtml where
 
-import Generated.Types
-import IHP.ViewPrelude hiding (Symbol)
-import Web.Routes
+import Web.Prelude
 import Web.Types
 
 candleChartHtml :: Maybe Text -> Html

@@ -1,26 +1,22 @@
-module Service.SymbolService
-  ( getSymbolsFromLocal
-  , updateSymbolsToLocal
+module Web.Service.SymbolService
+  ( getSymbolsFromDB
+  , UpdateSymbolJob(..)
+  , updateSymbolToDB
   ) where
 
 import           Control.Exception
 import           Control.Monad
 import qualified Data.Map as M
 import qualified Data.Text as T
-import qualified Database.PostgreSQL.Simple as PG
-import           Generated.Types
-import           IHP.ControllerSupport
-import           IHP.Fetch
-import           IHP.HaskellSupport
-import           IHP.ModelSupport
-import           IHP.QueryBuilder
-import           Prelude
-import           Service.Provider.SymbolProvider
+import           Web.Prelude
+import           Web.Provider.SymbolProvider
+import           Web.Job.UpdateSymbolJob
+import           Web.Types
 
-getSymbolsFromLocal
+getSymbolsFromDB
   :: (?context :: ControllerContext, ?modelContext :: ModelContext, ?theAction :: controller) =>
   IO (M.Map SymbolType [Symbol])
-getSymbolsFromLocal = do
+getSymbolsFromDB = do
   let symbolTypes = [minBound .. maxBound] :: [SymbolType]
   symbolsByType <- M.fromList <$> do
     forM symbolTypes $ \symbolType -> do
@@ -30,12 +26,11 @@ getSymbolsFromLocal = do
       pure (symbolType, symbols)
   return symbolsByType
 
-updateSymbolsToLocal
+updateSymbolToDB
   :: (?context :: ControllerContext, ?modelContext :: ModelContext, ?theAction :: controller)
   => SymbolType -> IO ()
-updateSymbolsToLocal symbolType = do
-  symbols <- provideSymbols symbolType
-  sql <- provideSymbolsSQL
-  withDatabaseConnection $ \conn -> do
-    _ <- PG.executeMany conn sql symbols
-    pure ()
+updateSymbolToDB symbolType = do
+  newRecord @UpdateSymbolJob
+    |> set #symbolType symbolType
+    |> create
+  return ()

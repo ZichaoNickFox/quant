@@ -11,7 +11,7 @@ import Web.Types
 import Web.FrontController
 
 instance FrontController RootApplication where
-    controllers = [ mountFrontController QuantApplication ]
+    controllers = [ mountFrontController WebApplication ]
 
 instance Worker RootApplication where
     workers _ = []

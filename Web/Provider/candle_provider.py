@@ -4,6 +4,7 @@ import json
 import requests
 import sys
 import tushare as ts
+import os
 
 def dump(content):
   print(content, file=sys.stdout)
@@ -120,7 +121,10 @@ def ts_to_json_format(df, ts_symbol_code_suffix, timeframe):
   return res
 
 if __name__ == "__main__":
-  ts.set_token("0f050ad60cba4e44f5f218638e678030e1257b87246b6203e9c1e749")
+  token = os.environ.get("TUSHARE_TOKEN")
+  if not token:
+    raise RuntimeError("TUSHARE_TOKEN not set")
+  ts.set_token(token)
   parameter_json = ""
   if len(sys.argv) > 1:
     parameter_json = sys.argv[1]
