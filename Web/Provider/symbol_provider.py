@@ -6,9 +6,6 @@ import json
 import sys
 import os
 
-def dump(category, content):
-  print(category, content, file=sys.stderr)
-
 # 重新设置列名
 def refactor_df_column(df, symbol_column_name, name_column_name, symbol_suffix):
   if symbol_suffix == "":
@@ -40,6 +37,18 @@ def stock_basic():
   pro = ts.pro_api()
   df = pd.DataFrame(pro.stock_basic(exchange='', list_status='L', fields=['ts_code', 'name', 'list_date', 'delist_date']))
   symbols = [{"code" : row[0], "name" : row[1], "symbol_type" : "stock", "list_date" : yyyymmdd_to_iso(row[2]), "delist_date" : yyyymmdd_to_iso(row[3])}
+             for row in df.itertuples(index=False)]
+  return symbols
+
+# all index https://www.tushare.pro/document/2?doc_id=94
+def index_basic():
+  # 导入tushare
+  import tushare as ts
+  # 初始化pro接口
+  pro = ts.pro_api()
+  df = pd.DataFrame(pro.index_basic(fields=['ts_code', 'name', 'list_date']))
+  df = df[df['list_date'].notna()]
+  symbols = [{"code" : row[0], "name" : row[1], "symbol_type" : "index", "list_date" : yyyymmdd_to_iso(row[2]), "delist_date" : yyyymmdd_to_iso(None)}
              for row in df.itertuples(index=False)]
   return symbols
 
@@ -251,6 +260,8 @@ def test(symbol_type):
 def get_symbol(symbol_type):
   if symbol_type == "stock":              # stock
     return stock_basic()
+  elif symbol_type == "index":            # index
+    return index_basic()
   elif symbol_type == "etf":              # etf
     return etf_basic()
   elif symbol_type == "ShangHai":         # 上证股票
@@ -264,18 +275,19 @@ def get_symbol(symbol_type):
   elif symbol_type == "ConceptIndex":     # 板块指数
     return get_concept_index_list()
   else:
-    dump("get_symbol.py", "error symbol_type : " + repr(symbol_type))
+    print("[get_symbol.py]", "error symbol_type : " + repr(symbol_type), file=sys.stderr)
 
 if __name__ == "__main__":
   token = os.environ.get("TUSHARE_TOKEN")
   if not token:
     raise RuntimeError("TUSHARE_TOKEN not set")
   ts.set_token(token)
-  symbol_type = ""
-  if len(sys.argv) > 1:
-    symbol_type = json.loads(sys.argv[1])
-  else:
-    assert "[get_symbols.py] parameter error"
+  # symbol_type = ""
+  # if len(sys.argv) > 1:
+  #   symbol_type = json.loads(sys.argv[1])
+  # else:
+  #   assert "[get_symbols.py] parameter error"
+  symbol_type = "index"
   symbols = get_symbol(symbol_type)
   json_result = json.dumps(symbols, ensure_ascii = False)
   print(json_result)

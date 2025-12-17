@@ -10,6 +10,8 @@ module Web.Prelude
   , module IHP.HaskellSupport
   , module IHP.Job.Dashboard
   , module IHP.Job.Dashboard.Types
+  , module IHP.Job.Runner
+  , module IHP.Job.Types
   , module IHP.Log
   , logDebug
   , logError
@@ -41,6 +43,8 @@ import qualified IHP.Log as Log (debug, error, info, warn)
 import           IHP.LoginSupport.Middleware hiding (Symbol)
 import           IHP.Job.Dashboard
 import           IHP.Job.Dashboard.Types
+import           IHP.Job.Runner
+import           IHP.Job.Types
 import           IHP.Modal.Types
 import           IHP.Modal.ViewFunctions
 import           IHP.ModelSupport

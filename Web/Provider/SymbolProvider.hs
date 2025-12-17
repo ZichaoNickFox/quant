@@ -13,10 +13,9 @@ import           Data.UUID (UUID)
 import           Database.PostgreSQL.Simple.ToField (ToField(..), toField)
 import           Database.PostgreSQL.Simple.ToRow (ToRow(..))
 import           Database.PostgreSQL.Simple.Types (Query (..))
-import           Generated.Types
-import           GHC.Generics
 import           Web.Prelude
 import           Web.Provider.Python
+import           Web.Types
 
 instance ToJSON SymbolType where
   toJSON = \case
@@ -62,6 +61,7 @@ instance ToRow Symbol where
 
 downloadSymbols :: (?context :: FrameworkConfig) => SymbolType -> IO [Symbol]
 downloadSymbols symbolType = do
-  result <- fromJust <$> (runPython "Service/Provider/symbol_provider.py" symbolType False :: IO (Maybe [Symbol]))
-  logInfo $ "[provideSymbols] nums - " <> show (length result)
+  logInfo $ ("[provideSymbols] begin | parameter : " <> tshow symbolType :: Text)
+  result <- fromJust <$> (runPython "Web/Provider/symbol_provider.py" symbolType False :: IO (Maybe [Symbol]))
+  logInfo $ "[provideSymbols] end | nums - " <> show (length result)
   return result

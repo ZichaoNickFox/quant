@@ -11,7 +11,7 @@ import           Web.Types
 import           Web.View.Data.DataView
 
 instance Controller DataController where
-  action DataAction =do
+  action DataAction = autoRefresh do
     let mbSelectedSymbolCode = paramOrNothing @Text "symbolCode"
     symbolsByType <- getSymbolsFromDB 
     render DataView { symbolsByType, mbSelectedSymbolCode }
