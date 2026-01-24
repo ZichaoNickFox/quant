@@ -1,8 +1,8 @@
 module Web.Controller.BacktestController where
 
-import IHP.ControllerPrelude
-import Web.View.Backtest.Index
+import Web.Prelude
 import Web.Types
+import Web.View.Backtest.Index
 
 instance Controller BacktestController where
   action BacktestAction = do

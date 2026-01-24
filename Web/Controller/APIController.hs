@@ -5,13 +5,12 @@ import Web.Types
 
 instance Controller APIController where
   action CandlesAction = do
-    code <- param @Text "code"
-
-    candles <- query @Candle
-      |> filterWhere (#symbolCode, code)
-      |> orderByAsc #time
-      |> fetch
-
+    symbolCode <- param @Text "symbolCode"
+    symbolType <- param @Text "symbolType"
+    dateframe <- param @Int "dataframe"
+    begin <- param @Datetime "begin"
+    end <- param @Datetime "end"
+    
     renderJson (map toChartCandle candles)
 
 toChartCandle :: Candle -> A.Value

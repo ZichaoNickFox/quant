@@ -14,7 +14,7 @@ import           Web.Provider.SymbolProvider
 
 getCandlesFromLocal
   :: (?context :: ControllerContext, ?modelContext :: ModelContext, ?theAction :: controller) =>
-  IO (M.Map SymbolType [Symbol])
+  IO TypeNamesMap
 getCandlesFromLocal = undefined
 
 updateCandlesToLocal

@@ -6,29 +6,30 @@ import           Data.Text hiding (concat)
 import           Web.Prelude
 import           Web.Types
 
-selectSymbolHtml :: Map SymbolType [Symbol] -> Html
-selectSymbolHtml symbolsByType =
+selectSymbolHtml :: TypeSymbolsMap -> Html
+selectSymbolHtml typeSymbolsMap =
   [hsx|
     <div style="display: flex; align-items: center; gap: 12px;">
       <form method="get" action={DataAction}>
-        <input
-          type="text"
-          name="symbolCode"
-          list="symbol-list"
-          placeholder="输入代码或选择"
-          onfocus="this.value='';"
-        />
-
+        <input type="text" list="symbol-list" oninput="
+            const v = this.value;
+            const i = v.indexOf('|');
+            if (i > 0) {
+              this.form.symbolType.value = v.slice(0, i);
+              this.form.symbolCode.value = v.slice(i + 1);
+            }
+          " onfocus="this.value='';" />
+        <input type="hidden" name="symbolType" />
+        <input type="hidden" name="symbolCode" />
         <datalist id="symbol-list">
           {forEach symbols renderSymbolOption}
         </datalist>
-
         <button type="submit">Select</button>
       </form>
     </div>
   |]
-  where symbols = mconcat $ M.elems symbolsByType
+  where symbols = concat $ M.elems typeSymbolsMap
 
 renderSymbolOption :: Symbol -> Html
-renderSymbolOption (Symbol {name, code}) = 
-  [hsx| <option value={code}>{name}</option> |]
+renderSymbolOption symbol = 
+  [hsx| <option value={inputValue (symbol.symbolType :: SymbolType) <> "|" <> symbol.code}>{symbol.name}</option> |]

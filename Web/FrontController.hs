@@ -11,7 +11,7 @@ instance FrontController WebApplication where
     , parseRoute @NoteController
     , parseRoute @StrategyController
     , parseRoute @BacktestController
-    -- , parseRoute @JobsDashboardController () [UpdateSymbolJob, DownloadCandleJob]
+    , parseRoute @(JobsDashboardController NoAuth '[])
     ]
 
 instance InitControllerContext WebApplication where

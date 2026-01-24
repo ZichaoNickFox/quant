@@ -1,5 +1,5 @@
 module Web.Service.SymbolService
-  ( getSymbolsFromDB
+  ( getTypeSymbolsMapFromDB
   , UpdateSymbolJob(..)
   , updateSymbolToDB
   ) where
@@ -13,18 +13,18 @@ import           Web.Provider.SymbolProvider
 import           Web.Job.UpdateSymbolJob
 import           Web.Types
 
-getSymbolsFromDB
+getTypeSymbolsMapFromDB
   :: (?context :: ControllerContext, ?modelContext :: ModelContext, ?theAction :: controller) =>
-  IO (M.Map SymbolType [Symbol])
-getSymbolsFromDB = do
+  IO TypeSymbolsMap
+getTypeSymbolsMapFromDB = do
   let symbolTypes = [minBound .. maxBound] :: [SymbolType]
-  symbolsByType <- M.fromList <$> do
+  symbolTypeCodesMap <- M.fromList <$> do
     forM symbolTypes $ \symbolType -> do
       symbols <- query @Symbol
         |> filterWhere (#symbolType, symbolType)
         |> fetch
       pure (symbolType, symbols)
-  return symbolsByType
+  return symbolTypeCodesMap
 
 updateSymbolToDB
   :: (?context :: ControllerContext, ?modelContext :: ModelContext, ?theAction :: controller)

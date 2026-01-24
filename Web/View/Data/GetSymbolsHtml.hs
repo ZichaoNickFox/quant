@@ -4,16 +4,16 @@ import Data.Map
 import Web.Prelude
 import Web.Types
 
-getSymbolsHtml :: Map SymbolType [Symbol] -> Html
-getSymbolsHtml symbolsByType = [hsx|
+getSymbolsHtml :: TypeSymbolsMap -> Html
+getSymbolsHtml typeSymbolsMap = [hsx|
     <div style="display: flex; align-items: center; gap: 12px;">
-      {forEach (keys symbolsByType) symbolsOfType}
+      {forEach (keys typeSymbolsMap) symbolsOfType}
     </div>
   |]
   where
     symbolsOfType :: SymbolType -> Html
     symbolsOfType symbolType =
-      let symbols = symbolsByType ! symbolType
+      let symbols = typeSymbolsMap ! symbolType
       in  [hsx|
             <span>{show symbolType}: {length symbols}</span>
 

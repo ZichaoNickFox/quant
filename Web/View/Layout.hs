@@ -53,6 +53,9 @@ navHtml = [hsx|
         <li class="nav-item">
             <a class="nav backtest" href={BacktestAction}>回测</a>
         </li>
+        <li class="nav-item">
+            <a class="nav backtest" href={RuntimeAction}>盯盘</a>
+        </li>
       </ul>
     </div>
   </nav>
@@ -77,6 +80,11 @@ scripts = [hsx|
   <script src={assetPath "/vendor/turbolinks.js"}></script>
   <script src={assetPath "/vendor/turbolinksInstantClick.js"}></script>
   <script src={assetPath "/vendor/turbolinksMorphdom.js"}></script>
+  <script src={assetPath "/vendor/lightweight-charts.standalone.development.js"}></script>
+
+  <script src={assetPath "/handleCandleCharHTML.js"}></script>
+  <script src={assetPath "/app.js"}></script>
+
   <script src={assetPath "/helpers.js"}></script>
   <script src={assetPath "/ihp-auto-refresh.js"}></script>
 |]
