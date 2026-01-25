@@ -1,21 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ImplicitParams #-}
 module Web.Prelude
   ( logController
   , logDebug
   , logError
   , logInfo
   , logWarn
+  , requestUrl
   , module IHP.AutoRefresh
   , module IHP.AutoRefresh.View
   , module IHP.Controller.Layout
+  , module IHP.Controller.Param
   , module IHP.Controller.Render
   , module IHP.ControllerPrelude
   , module IHP.ControllerSupport
   , module IHP.Fetch
   , module IHP.FrameworkConfig
   , module IHP.HaskellSupport
-  , module IHP.Job.Dashboard
-  , module IHP.Job.Dashboard.Types
   , module IHP.Job.Runner
   , module IHP.Job.Types
   , module IHP.Log
@@ -30,7 +31,7 @@ module Web.Prelude
   , module IHP.Prelude
   , module IHP.QueryBuilder
   , module IHP.ViewSupport
-  , module Prelude
+  , module Network.Wai
   ) where
 
 import qualified Data.Text as T
@@ -38,6 +39,7 @@ import           Data.Char
 import           IHP.AutoRefresh
 import           IHP.AutoRefresh.View
 import           IHP.Controller.Layout
+import           IHP.Controller.Param
 import           IHP.Controller.Render
 import           IHP.ControllerPrelude hiding (Error, Symbol)
 import           IHP.ControllerSupport
@@ -48,8 +50,6 @@ import           IHP.Log hiding (debug, error, Error, info, warn)
 import qualified IHP.Log as Log (debug, error, info, warn)
 import           IHP.Log.Types
 import           IHP.LoginSupport.Middleware hiding (Symbol)
-import           IHP.Job.Dashboard
-import           IHP.Job.Dashboard.Types
 import           IHP.Job.Runner
 import           IHP.Job.Types
 import           IHP.Modal.Types
@@ -61,7 +61,7 @@ import           IHP.PageHead.ViewFunctions (pageTitleOrDefault)
 import           IHP.Prelude hiding (Symbol)
 import           IHP.QueryBuilder
 import           IHP.ViewSupport hiding (fetch, param, query)
-import           Prelude (print)
+import           Network.Wai
 import qualified System.Log.FastLogger as FastLogger
 
 logDebug :: (?context :: context, LoggingProvider context) => Text -> IO ()
@@ -74,5 +74,7 @@ logWarn :: (?context :: context, LoggingProvider context) => Text -> IO ()
 logWarn = Log.warn
 
 logController :: (?context :: context, LoggingProvider context) => LogLevel -> Text -> IO ()
-logController level log = do
-  logInfo $ "\\ESC[31m" <> log <> "\\ESC[0m"
+logController level log = logInfo $ "\\ESC[36m" <> log <> "\\ESC[0m"
+
+requestUrl :: (?context :: ControllerContext ,?modelContext :: ModelContext ,?theAction :: controller ) => Text
+requestUrl = "rawPath=" <> tshow (rawPathInfo request) <> " " <> "rawQuery=" <> tshow (rawQueryString request)

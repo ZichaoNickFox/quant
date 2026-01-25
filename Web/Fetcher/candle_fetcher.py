@@ -5,6 +5,8 @@ import requests
 import sys
 import tushare as ts
 import os
+import akshare as ak
+import pandas as pd
 
 def dump(content):
   print(content, file=sys.stdout)
@@ -14,29 +16,32 @@ def dump(content):
 def ak_to_json_format(df):
   res = []
   for _, row in df.iterrows():
-    res_row = []
-    res_row.append(row["symbol"])
-    res_row.append(row["timeframe"])
-    res_row.append(row["datetime"])
-    res_row.append(row["开盘"])
-    res_row.append(row["收盘"])
-    res_row.append(row["最高"])
-    res_row.append(row["最低"])
-    res_row.append(row["成交量"])
-    res_row.append(row["成交额"])
-    res.append(res_row)
+    res.append({
+      "symbol_id": row["symbol_id"],
+      "timeframe": row["timeframe"],
+      "datetime": row["datetime"],
+      "open": row["开盘"],
+      "close": row["收盘"],
+      "high": row["最高"],
+      "low": row["最低"],
+      "volume": row["成交量"],
+      "amount": row["成交额"],
+    })
   return res
 
 # 历史行情数据-东财
 # stock_zh_a_hist
 # https://akshare.akfamily.xyz/data/stock/stock.html#id22
-def get_a_stock_candle_daily_weekly_monthly(symbol_code, timeframe, start_date, end_date, adjust):
+def get_a_stock_candle_daily_weekly_monthly(symbol_id, symbol_code, timeframe, start_date, end_date, adjust):
   df = ak.stock_zh_a_hist(
     symbol = symbol_code,
     period = timeframe_map[timeframe],
     start_date = start_date,
     end_date = end_date,
     adjust = adjust)
+  df["symbol_id"] = symbol_id
+  df["timeframe"] = timeframe
+  df.rename(columns={"日期": "datetime"}, inplace=True)
   return ak_to_json_format(df)
 
 # 请问如何获取历史某一天的1分钟数据-efinance
@@ -79,17 +84,20 @@ def get_a_stock_candle_minutly(symbol, date):
 # 历史行情数据-通用
 # index_zh_a_hist
 # https://akshare.akfamily.xyz/data/index/index.html#id7
-def get_a_index_candle_daily_weely_monthly(symbol_code, timeframe, start_date, end_date):
+def get_a_index_candle_daily_weely_monthly(symbol_id, symbol_code, timeframe, start_date, end_date):
   df = ak.index_zh_a_hist(
     symbol = symbol_code,
     period = timeframe_map[timeframe],
     start_date = start_date,
     end_date = end_date)
+  df["symbol_id"] = symbol_id
+  df["timeframe"] = timeframe
+  df.rename(columns={"日期": "datetime"}, inplace=True)
   return ak_to_json_format(df)
 
 def test_data():
   df = pd.DataFrame({
-    "symbolCode" : ['000001.XSHG', '000002.XSHG', '000003.XSHG', '000004.XSHG', '000005.XSHG'],
+    "symbol_id": ['00000000-0000-0000-0000-000000000000'] * 5,
     "timeframe" : [6, 6, 6, 6, 6],
     "datetime" : ['2017-03-01T00:00:00', '2017-03-02T00:00:00', '2017-03-03T00:00:00', '2017-03-06T00:00:00', '2017-03-07T00:00:00'],
     "开盘" : [1575.20, 1578.45, 1562.20, 1560.57, 1567.07],
@@ -106,18 +114,18 @@ timeframe_map = ["1min", "5min", "15min", "30min", "60min", "D", "W", "M"]
 def ts_to_json_format(df, ts_symbol_code_suffix, timeframe):
   res = []
   for _, row in df.iterrows():
-    res_row = []
-    res_row.append(row["ts_code"] + ts_symbol_code_suffix)
-    res_row.append(timeframe)
     dt = datetime.strptime(row["trade_date"], "%Y%m%d")
-    res_row.append(datetime.strftime(dt, "%Y-%m-%d %H:%M:%S"))
-    res_row.append(row["open"])
-    res_row.append(row["close"])
-    res_row.append(row["high"])
-    res_row.append(row["low"])
-    res_row.append(row["vol"])
-    res_row.append(row["amount"])
-    res.append(res_row)
+    res.append({
+      "symbol_id": row["symbol_id"],
+      "timeframe": timeframe,
+      "datetime": datetime.strftime(dt, "%Y-%m-%d %H:%M:%S"),
+      "open": row["open"],
+      "close": row["close"],
+      "high": row["high"],
+      "low": row["low"],
+      "volume": row["vol"],
+      "amount": row["amount"],
+    })
   return res
 
 if __name__ == "__main__":
@@ -130,10 +138,11 @@ if __name__ == "__main__":
     parameter_json = sys.argv[1]
   parameter_json = json.loads(sys.argv[1])
   symbol_code = parameter_json["symbol_code"]
+  symbol_id = parameter_json.get("symbol_id")
   is_index = "INDEX" in symbol_code
   ts_symbol_code = symbol_code.replace("XSHG", "SH")
-  ts_symbol_code = symbol_code.replace("XSHE", "SZ")
-  ts_symbol_code = symbol_code.replace(".INDEX", "")
+  ts_symbol_code = ts_symbol_code.replace("XSHE", "SZ")
+  ts_symbol_code = ts_symbol_code.replace(".INDEX", "")
   timeframe = parameter_json["timeframe"]
   ts_timeframe = timeframe_map[timeframe]
   start_datetime = parameter_json["from_datetime"]
@@ -146,6 +155,8 @@ if __name__ == "__main__":
     df = pro.index_daily(ts_code = ts_symbol_code,
                          start_date = start_datetime,
                          end_date = end_datetime)
+    # attach symbol_id and timeframe to rows for downstream parsing
+    df["symbol_id"] = symbol_id
     result = ts_to_json_format(df, ".INDEX", timeframe)
     json_result = json.dumps(result, ensure_ascii = False)
     print(json_result)

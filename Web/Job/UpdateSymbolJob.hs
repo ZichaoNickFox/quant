@@ -4,8 +4,8 @@ import Data.String.Conversions (cs)
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.Types (Query(..))
 import Prelude (readFile)
+import Web.Fetcher.SymbolFetcher
 import Web.Prelude
-import Web.Provider.SymbolProvider
 import Web.Types
 
 instance Job UpdateSymbolJob where
@@ -13,7 +13,7 @@ instance Job UpdateSymbolJob where
     logInfo ("[UpdateSymbolJob] perform updateSymbolJob" :: Text)
     let symbolType = get #symbolType updateSymbolJob
     symbols <- downloadSymbols symbolType
-    sql <- Query . cs <$> readFile "Web/Provider/SymbolProvider.sql"
+    sql <- Query . cs <$> readFile "Web/Fetcher/SymbolFetcher.sql"
     withDatabaseConnection $ \conn -> do
       _ <- executeMany conn sql symbols
       pure ()

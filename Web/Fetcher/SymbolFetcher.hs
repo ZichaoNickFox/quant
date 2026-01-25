@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Web.Provider.SymbolProvider
+module Web.Fetcher.SymbolFetcher
   ( downloadSymbols
   ) where
 
@@ -8,13 +8,13 @@ import           Data.Aeson
 import           Data.Maybe
 import           Data.String.Conversions
 import           Data.Text hiding (length)
-import qualified Data.Vector as V
-import           Data.UUID (UUID)
+import           Data.UUID                       (UUID)
+import qualified Data.Vector                     as V
 import           Database.PostgreSQL.Simple.ToField (ToField(..), toField)
 import           Database.PostgreSQL.Simple.ToRow (ToRow(..))
 import           Database.PostgreSQL.Simple.Types (Query (..))
+import           Web.Fetcher.Python
 import           Web.Prelude
-import           Web.Provider.Python
 import           Web.Types
 
 instance ToJSON SymbolType where
@@ -59,9 +59,12 @@ instance ToRow Symbol where
     , toField (get #delistDate s)
     ]
 
-downloadSymbols :: (?context :: FrameworkConfig) => SymbolType -> IO [Symbol]
-downloadSymbols symbolType = do
-  logInfo $ ("[provideSymbols] begin | parameter : " <> tshow symbolType :: Text)
-  result <- fromJust <$> (runPython "Web/Provider/symbol_provider.py" symbolType False :: IO (Maybe [Symbol]))
-  logInfo $ "[provideSymbols] end | nums - " <> show (length result)
+fetchSymbols :: (?context :: FrameworkConfig) => SymbolType -> IO [Symbol]
+fetchSymbols symbolType = do
+  logInfo $ ("[downloadSymbols] begin | parameter : " <> tshow symbolType :: Text)
+  result <- fromJust <$> (runPython "Web/Fetcher/symbol_fetcher.py" symbolType False :: IO (Maybe [Symbol]))
+  logInfo $ "[downloadSymbols] end | nums - " <> tshow (length result)
   return result
+
+downloadSymbols :: (?context :: FrameworkConfig) => SymbolType -> IO [Symbol]
+downloadSymbols = fetchSymbols

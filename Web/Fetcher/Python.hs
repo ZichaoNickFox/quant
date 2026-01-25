@@ -1,23 +1,21 @@
-module Web.Provider.Python
+module Web.Fetcher.Python
   ( runPython
   ) where
 
 import           Data.Aeson
 import           Data.Bool
-import           Data.ByteString.Lazy.Char8 as LBS
-import qualified Data.Text as Text
-import qualified Data.Text.Encoding as TextEncoding
-import           IHP.Log
-import           IHP.Prelude hiding (error)
-import           Prelude hiding (error)
+import           Data.ByteString.Lazy.Char8    as LBS
+import qualified Data.Text                     as Text
+import qualified Data.Text.Encoding            as TextEncoding
 import           System.Exit
 import           System.Process
+import           Web.Prelude                    hiding (error)
 
 runPython :: (?context :: context, LoggingProvider context, FromJSON result, ToJSON parameter)
           => Text.Text -> parameter -> Bool -> IO (Maybe result)
 runPython scriptFullpath parameter printPythonLog = do
   let parameterJSON = LBS.unpack (encode parameter) :: String
-  info $ "[Python] Call python Parameter Json : " <> Text.pack parameterJSON
+  logInfo $ "[Python] Call python Parameter Json : " <> Text.pack parameterJSON
 
   (exitCode, resultJSON, processErrorString) <- readProcessWithExitCode "python3" [Text.unpack scriptFullpath, parameterJSON] ""
 
@@ -28,11 +26,11 @@ runPython scriptFullpath parameter printPythonLog = do
       let eitherResult = eitherDecode lazyByteString
       case eitherResult of
         Right result -> do
-          info $ "[Python] Success" <> bool "" (" : " <> Text.pack resultJSON) printPythonLog
+          logInfo $ "[Python] Success" <> bool "" (" : " <> Text.pack resultJSON) printPythonLog
           return result 
         Left jsonErrorString -> do
-          error $ "[Python] Json parse error" <> bool "" (" : " <> Text.pack resultJSON) printPythonLog <> "Parser : " <> Text.pack jsonErrorString
+          logError $ "[Python] Json parse error" <> bool "" (" : " <> Text.pack resultJSON) printPythonLog <> "Parser : " <> Text.pack jsonErrorString
           return Nothing
     ExitFailure code -> do
-      error $ "[Python] Python error : code-" <> tshow code <> " message-" <> Text.pack processErrorString
+      logError $ "[Python] Python error : code-" <> tshow code <> " message-" <> Text.pack processErrorString
       return Nothing
