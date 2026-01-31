@@ -44,11 +44,9 @@ instance View DataView where
       symbolsOfType symbolType =
         let symbols = typeSymbolsMap M.! symbolType
         in  [hsx|
-              <span>{show symbolType}: {length symbols}</span>
-              <form method="get" action={DataGetSymbolsAction}>
-                <input type="hidden" name="symbolType" value={inputValue symbolType} />
-                <button type="submit">Update</button>
-              </form>
+              <span data-frp-symbol-count data-symbol-type={inputValue symbolType} data-placeholder="...">
+                {show symbolType}: {length symbols}
+              </span>
             |]
       symbols = Web.Prelude.concat $ M.elems typeSymbolsMap
       renderSymbolOption :: Symbol -> Html

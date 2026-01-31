@@ -1,6 +1,7 @@
 {-# LANGUAGE ImplicitParams #-}
 module Web.Repository.CandleRepository
   ( getCandlesWindow
+  , hasCoverage
   , upsertCandles
   ) where
 
@@ -10,9 +11,10 @@ import           Database.PostgreSQL.Simple.Types (Query (..))
 import           Generated.Types
 import           Prelude                        (readFile)
 import           Web.Prelude
+import           Web.Repository.SymbolRepository (clampCandleWindow, getSymbolByCodeType)
 
 getCandlesWindow
-  :: (?context :: ControllerContext, ?modelContext :: ModelContext, ?theAction :: controller)
+  :: (?modelContext :: ModelContext)
   => UUID -> Int -> LocalTime -> LocalTime -> IO [Candle]
 getCandlesWindow sid timeframe fromDt toDt =
   query @Candle
@@ -23,9 +25,36 @@ getCandlesWindow sid timeframe fromDt toDt =
     |> orderBy #datetime
     |> fetch
 
+-- Check whether we have full coverage for a given window (existence of first and last)
+hasCoverage
+  :: (?modelContext :: ModelContext)
+  => SymbolType -> Text -> Int -> LocalTime -> LocalTime -> IO Bool
+hasCoverage symbolType symbolCode timeframe fromDt toDt = do
+  mbSym <- getSymbolByCodeType symbolType symbolCode
+  case mbSym of
+    Nothing -> pure False
+    Just sym -> do
+      let (fromC, toC) = clampCandleWindow sym fromDt toDt
+          (Id sid)     = get #id sym
+      first <- query @Candle
+                |> filterWhere (#symbolId, sid)
+                |> filterWhere (#timeframe, timeframe)
+                |> filterWhereGreaterThanOrEqualTo (#datetime, fromC)
+                |> filterWhereLessThanOrEqualTo (#datetime, toC)
+                |> orderBy #datetime
+                |> fetchOneOrNothing
+      lastC <- query @Candle
+                |> filterWhere (#symbolId, sid)
+                |> filterWhere (#timeframe, timeframe)
+                |> filterWhereGreaterThanOrEqualTo (#datetime, fromC)
+                |> filterWhereLessThanOrEqualTo (#datetime, toC)
+                |> orderByDesc #datetime
+                |> fetchOneOrNothing
+      pure (isJust first && isJust lastC)
+
 -- UPSERT candles by primary key (symbol_id, timeframe, datetime)
 upsertCandles
-  :: (?context :: ControllerContext, ?modelContext :: ModelContext, ?theAction :: controller)
+  :: (?modelContext :: ModelContext)
   => [Candle] -> IO ()
 upsertCandles [] = pure ()
 upsertCandles candles = do

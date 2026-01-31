@@ -17,7 +17,21 @@
       systems = import systems;
       imports = [ ihp.flakeModules.default ];
 
-      perSystem = { pkgs, ... }: {
+      perSystem = { pkgs, ... }: let
+        # Extend haskellPackages to include purescript-bridge (not in upstream set)
+        hspkgs = pkgs.haskellPackages.override {
+          overrides = self: super: {
+            purescript-bridge =
+              let
+                drv = super.callHackageDirect {
+                  pkg = "purescript-bridge";
+                  ver = "0.15.0.0";
+                  sha256 = "1y2xrcnifrfbchjp3q9zkrgpz5hhrfk6083pi824zmywa29dyigq";
+                } {};
+              in assert (drv.pname == "purescript-bridge"); drv;
+          };
+        };
+      in {
         ihp = {
           appName = "app"; # Change this to your project name
           enable = true;
@@ -47,6 +61,13 @@
           # services.mailhog.enable = true;
           packages = [
             pkgs.python3
+            pkgs.gcc
+            (hspkgs.ghcWithPackages (p: [
+              p.purescript-bridge
+              p.aeson
+              p.text
+              p.containers
+            ]))
           ];
           enterShell = ''
             # python

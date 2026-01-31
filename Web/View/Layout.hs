@@ -36,21 +36,21 @@ navHtml = [hsx|
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navmenu">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item">
-            <a class="nav data" href={DataAction}>数据</a>
+      <ul class="navbar-nav d-flex flex-row align-items-center">
+        <li class="nav-item mr-3">
+          <a class="nav-link px-0 py-0" href={DataAction}>数据</a>
         </li>
-        <li class="nav-item">
-            <a class="nav note" href={NoteAction}>笔记</a>
+        <li class="nav-item mr-3">
+          <a class="nav-link px-0 py-0" href={NoteAction}>笔记</a>
         </li>
-        <li class="nav-item">
-            <a class="nav strategy" href={StrategyAction}>策略</a>
+        <li class="nav-item mr-3">
+          <a class="nav-link px-0 py-0" href={StrategyAction}>策略</a>
         </li>
-        <li class="nav-item">
-            <a class="nav backtest" href={BacktestAction}>回测</a>
+        <li class="nav-item mr-3">
+          <a class="nav-link px-0 py-0" href={BacktestAction}>回测</a>
         </li>
-        <li class="nav-item">
-            <a class="nav backtest" href={RuntimeAction}>盯盘</a>
+        <li class="nav-item mr-3">
+          <a class="nav-link px-0 py-0" href={RuntimeAction}>盯盘</a>
         </li>
       </ul>
     </div>
@@ -77,9 +77,7 @@ scripts = [hsx|
   <!-- <script src={assetPath "/vendor/turbolinksInstantClick.js"}></script> -->
   <!-- <script src={assetPath "/vendor/turbolinksMorphdom.js"}></script> -->
   <script src={assetPath "/vendor/lightweight-charts.standalone.development.js"}></script>
-
-  <script src={assetPath "/handleCandleCharHTML.js"}></script>
-  <script src={assetPath "/app.js"}></script>
+  <script src={assetPath "/ps-bundle.js"}></script>
 
   <script src={assetPath "/helpers.js"}></script>
   <!-- <script src={assetPath "/ihp-auto-refresh.js"}></script> -->

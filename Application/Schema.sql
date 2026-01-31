@@ -1,7 +1,6 @@
--- Your database schema. Use the Schema Designer at http://localhost:8001/ to add some tables.
-CREATE TYPE "NODE_TYPE" AS ENUM ('folder', 'file');
-CREATE TYPE "CELL_TYPE" AS ENUM ('raw', 'image', 'backtest');
-CREATE TYPE "SYMBOL_TYPE" AS ENUM ('stock', 'index', 'etf', 'future', 'option', 'fund');
+CREATE TYPE NODE_TYPE AS ENUM ('folder', 'file');
+CREATE TYPE CELL_TYPE AS ENUM ('raw', 'image', 'backtest');
+CREATE TYPE SYMBOL_TYPE AS ENUM ('stock', 'index', 'etf', 'future', 'option', 'fund');
 CREATE TABLE symbol (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
     code TEXT NOT NULL,
@@ -10,6 +9,11 @@ CREATE TABLE symbol (
     list_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     delist_date TIMESTAMP WITHOUT TIME ZONE,
     UNIQUE(code, symbol_type)
+);
+CREATE TABLE data_freshness (
+    dataset_key TEXT PRIMARY KEY NOT NULL,
+    last_refreshed_at TIMESTAMP WITHOUT TIME ZONE DEFAULT '1970-01-01 00:00:00' NOT NULL,
+    ttl_seconds INTEGER DEFAULT 604800 NOT NULL
 );
 CREATE TABLE basket_tree (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,

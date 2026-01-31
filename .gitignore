@@ -25,3 +25,5 @@ devenv.local.nix
 .direnv
 
 .venv
+ps/.spago
+ps/output

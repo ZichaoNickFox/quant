@@ -17,10 +17,9 @@ import           Web.Prelude
 data WebApplication = WebApplication deriving (Eq, Show)
 
 -- Controller
-data APIController = CandlesAction deriving (Eq, Show, Data)
+data APIController = CandlesAction | SymbolsAction deriving (Eq, Show, Data)
 data BacktestController = BacktestAction deriving (Eq, Show, Data)
-data DataController = DataAction
-                    | DataGetSymbolsAction deriving (Eq, Show, Data)
+data DataController = DataAction deriving (Eq, Show, Data)
 data NoteController = NoteAction deriving (Eq, Show, Data)
 data RuntimeController = RuntimeAction deriving (Eq, Show, Data)
 data StrategyController = StrategyAction deriving (Eq, Show, Data)

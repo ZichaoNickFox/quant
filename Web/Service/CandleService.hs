@@ -9,7 +9,6 @@ module Web.Service.CandleService
 import           Data.List                      (maximum, minimum)
 import           Data.Time
 import           Data.UUID                      (UUID)
-import           Generated.Types
 import           Web.Fetcher.CandleFetcher
 import           Web.Prelude
 import           Web.Repository.CandleRepository
