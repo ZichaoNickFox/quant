@@ -45,6 +45,7 @@
             p.ihp
             p.ihp-ide
             p.ihp-job-dashboard
+            hspkgs.purescript-bridge
             cabal-install
             base
             wai
@@ -62,12 +63,6 @@
           packages = [
             pkgs.python3
             pkgs.gcc
-            (hspkgs.ghcWithPackages (p: [
-              p.purescript-bridge
-              p.aeson
-              p.text
-              p.containers
-            ]))
           ];
           enterShell = ''
             # python

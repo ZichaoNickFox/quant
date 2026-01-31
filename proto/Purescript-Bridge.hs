@@ -3,15 +3,13 @@
 
 -- | Generate PureScript types for the proto module.
 --   Run from repo root:
---     stack runghc proto/Purescript-Bridge.hs
---   or
---     cabal run bridge   (if you add an executable target)
---
---   Output: ps/src/Proto/*.purs
+--      runghc proto/Purescript-Bridge.hs
+--   Output:
+--      ps/src/Proto/*.purs
 module Main where
 
+import Data.Proxy (Proxy (..))
 import Language.PureScript.Bridge
-import Language.PureScript.Bridge.CodeGenSwitches (codeGenSwitches, genSingleModule)
 
 import Proto.Symbols
 import Proto.Candles
@@ -22,11 +20,11 @@ myBridge = defaultBridge
 
 main :: IO ()
 main = do
-  let outDir   = "ps/src/Proto"   -- PureScript output directory
-      settings = (buildBridge myBridge) { _codeGenSwitches = codeGenSwitches { genSingleModule = False } }
-      types    =
-        [ mkSumType @SymbolCountsResponse
-        , mkSumType @Candle
-        , mkSumType @CandlesResponse
+  let outDir = "ps/src/Proto"   -- PureScript output directory
+      bridge = buildBridge myBridge
+      types  =
+        [ mkSumType (Proxy @SymbolCountsResponse)
+        , mkSumType (Proxy @Candle)
+        , mkSumType (Proxy @CandlesResponse)
         ]
-  writePSTypes outDir settings types
+  writePSTypes outDir bridge types

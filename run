@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Enable direnv for this repo (no-op if already allowed)
+# env
 direnv allow .
-
-# Update flake inputs only when explicitly requested
 if [[ "${UPDATE_FLAKE:-}" == "1" ]]; then
   nix flake update
 fi
 
-# Start the dev environment
+# proto
+runghc proto/Purescript-Bridge.hs
+
+# run
 devenv up

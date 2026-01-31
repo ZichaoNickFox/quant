@@ -25,5 +25,6 @@ devenv.local.nix
 .direnv
 
 .venv
+.psc-ide-port
 ps/.spago
 ps/output
