@@ -5,7 +5,7 @@ import Prelude
 import Affjax.Web as AX
 import Affjax.ResponseFormat as RF
 import Data.Argonaut.Decode (decodeJson)
-import Data.Array (mapMaybe, null)
+import Data.Array (mapMaybe, length, null)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -28,7 +28,7 @@ import Proto.Symbols (SymbolCountsResponse(..), SymbolCountsResponseJson(..))
 fetchSymbols :: Boolean -> Aff SymbolCountsResponse
 fetchSymbols skipCheck = do
   let qs = if skipCheck then "?skipCheck=true" else ""
-  res <- AX.get RF.json ("/api/symbols" <> qs)
+  res <- AX.get RF.json ("/APISymbols" <> qs)
   case res of
     Left err -> do
       liftEffect $ log $ "fetch symbols error: " <> AX.printError err
@@ -68,19 +68,19 @@ combineDataFRP initEvent wsEvent = do
     { event: _, push: pushResponse } <- create
 
     -- when a refresh is requested, fetch then push response
-    _ <- FRP.subscribeWithLog refreshes "[FRP][subscribe][refreshes] skipCheck=" \skipCheck -> do
+    _ <- FRP.subscribeWithLog refreshes "[FRP][subs][refreshes] skipCheck=" \skipCheck -> do
       launchAff_ do
         resp <- fetchSymbols skipCheck
         liftEffect do
           FRP.pushWithLog (\_ -> pushResponse resp) "[FRP][push][response]"
           renderSymbols resp els
 
-    _ <- FRP.subscribeWithLog initEvent "[FRP][subscribe][initEvent]" \_ -> do
+    _ <- FRP.subscribeWithLog initEvent "[FRP][subs][initEvent]" \_ -> do
       setLoading els
       FRP.pushWithLog (\_ -> pushRefresh false) "[FRP][push][refreshes] skipCheck=false"
     
     -- websocket notify to re-fetch (skip cache check)
-    _ <- FRP.subscribeWithLog wsEvent "[FRP][subscribe][wsEvent]" \_ -> do
+    _ <- FRP.subscribeWithLog wsEvent "[FRP][subs][wsEvent]" \_ -> do
       FRP.pushWithLog (\_ -> pushRefresh true) "[FRP][push][refreshes] skipCheck=true"
 
     -- NOTE: init event handles first render (DOMContentLoaded/ihp:afterRender)

@@ -16,16 +16,27 @@ import Web.HTML.Window (document)
 
 main :: Effect Unit
 main = do
+  -- event
   { event: domEvent, push: domPush } <- create
   { event: frpEvent, push: frpPush } <- create
-  let beginEvent = combineBeginEvent domEvent frpEvent
-  _ <- FRP.subscribeWithLog beginEvent "[FRP][event][begin]" \_ -> pure unit
+  { event: beginEvent, push: beginPush } <- create
+
+  -- subscribe
+  _ <- FRP.subscribeWithLog domEvent "[FRP][subs][dom]" \_ -> do
+    FRP.pushWithLog frpPush "[FRP][push][frp]"
+    pure unit
+  _ <- FRP.subscribeWithLog domEvent "[FRP][subs][frp]" \_ -> do
+    notifyEvent <- bindNotifyEvent
+    combineDataFRP beginEvent notifyEvent
+    FRP.pushWithLog beginPush "[FRP][push][begin]"
+    pure unit
+  _ <- FRP.subscribeWithLog beginEvent "[FRP][subs][begin]" \_ -> do
+    pure unit
+
   win <- window
   doc <- document win
   bindDomEvent doc domPush
-  notifyEvent <- bindNotifyEvent
-  combineDataFRP beginEvent notifyEvent
-  FRP.pushWithLog frpPush "[FRP][push][frp]"
+  pure unit
 
 bindDomEvent :: HTMLDoc.HTMLDocument -> (Unit -> Effect Unit) -> Effect Unit
 bindDomEvent doc domPush = do
@@ -46,9 +57,3 @@ bindRuntimeEvent = do
   { event, push } <- create
   attachEventSource "/sse/runtime" (\_ -> push unit)
   pure event
-
-combineBeginEvent :: Event Unit -> Event Unit -> Event Unit
-combineBeginEvent domEvent frpEvent =
-  FRP.take1 $
-    FRP.map (const unit) $
-      FRP.combineLatest2 domEvent frpEvent

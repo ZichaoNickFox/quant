@@ -30,7 +30,7 @@ defaultLayout innerHtml = H.docTypeHtml H.! A.lang "en" $
 -- 顶部导航栏
 navHtml :: Html
 navHtml = [hsx|
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+  <nav class="navbar navbar-expand-sm navbar-dark bg-dark px-3">
     <a class="navbar-brand" href="/">Quant</a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navmenu">
       <span class="navbar-toggler-icon"></span>
@@ -38,19 +38,19 @@ navHtml = [hsx|
     <div class="collapse navbar-collapse" id="navmenu">
       <ul class="navbar-nav d-flex flex-row align-items-center">
         <li class="nav-item mr-3">
-          <a class="nav-link px-0 py-0" href={DataAction}>数据</a>
+          <a class="nav-link px-0 py-0" href={PageDataAction}>数据</a>
         </li>
         <li class="nav-item mr-3">
-          <a class="nav-link px-0 py-0" href={NoteAction}>笔记</a>
+          <a class="nav-link px-0 py-0" href={PageNoteAction}>笔记</a>
         </li>
         <li class="nav-item mr-3">
-          <a class="nav-link px-0 py-0" href={StrategyAction}>策略</a>
+          <a class="nav-link px-0 py-0" href={PageStrategyAction}>策略</a>
         </li>
         <li class="nav-item mr-3">
-          <a class="nav-link px-0 py-0" href={BacktestAction}>回测</a>
+          <a class="nav-link px-0 py-0" href={PageBacktestAction}>回测</a>
         </li>
         <li class="nav-item mr-3">
-          <a class="nav-link px-0 py-0" href={RuntimeAction}>盯盘</a>
+          <a class="nav-link px-0 py-0" href={PageRuntimeAction}>盯盘</a>
         </li>
       </ul>
     </div>

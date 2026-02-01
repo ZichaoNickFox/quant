@@ -17,5 +17,5 @@ pushWithLog push label = do
 subscribeWithLog :: forall a. Show a => Event a -> String -> (a -> Effect Unit) -> Effect (Effect Unit)
 subscribeWithLog event label handler =
   subscribe event \a -> do
-    log (show a <> " " <> label)
+    log (label <> " " <> show a)
     handler a

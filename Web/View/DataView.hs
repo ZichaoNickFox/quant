@@ -18,7 +18,7 @@ instance View DataView where
         {forEach (M.keys typeSymbolsMap) symbolsOfType}
       </div>
       <div style="display: flex; align-items: center; gap: 12px;">
-        <form method="get" action={DataAction}>
+        <form method="get" action={PageDataAction}>
           <input type="text" list="symbol-list" oninput="
               const v = this.value;
               const i = v.indexOf('|');

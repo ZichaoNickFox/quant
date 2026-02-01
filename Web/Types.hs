@@ -18,22 +18,20 @@ import           Web.Prelude
 data WebApplication = WebApplication deriving (Eq, Show)
 
 -- Controller
-data APIController = CandlesAction | SymbolsAction deriving (Eq, Show, Data)
-data BacktestController = BacktestAction deriving (Eq, Show, Data)
-data DataController = DataAction deriving (Eq, Show, Data)
-data NoteController = NoteAction deriving (Eq, Show, Data)
-data RuntimeController = RuntimeAction deriving (Eq, Show, Data)
-data StrategyController = StrategyAction deriving (Eq, Show, Data)
+data APIController = APICandlesAction | APISymbolsAction deriving (Eq, Show, Data)
+data PageController
+  = PageDataAction
+  | PageNoteAction
+  | PageStrategyAction
+  | PageBacktestAction
+  | PageRuntimeAction
+  deriving (Eq, Show, Data)
 data StaticController = StaticAction deriving (Eq, Show, Data)
 data NotifyController = NotifyAction deriving (Eq, Show, Data)
 
 -- Route
 instance AutoRoute APIController
-instance AutoRoute BacktestController
-instance AutoRoute DataController
-instance AutoRoute NoteController
-instance AutoRoute RuntimeController
-instance AutoRoute StrategyController
+instance AutoRoute PageController
 instance AutoRoute StaticController
 instance CanRoute NotifyController where
   parseRoute' = string "/sse/notify" <* endOfInput >> pure NotifyAction

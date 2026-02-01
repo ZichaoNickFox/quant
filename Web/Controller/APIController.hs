@@ -13,7 +13,7 @@ import           Web.Sync.Candles
 import           Web.Types
 
 instance Controller APIController where
-  action CandlesAction = do
+  action APICandlesAction = do
     logController Info $ "[APIController][CandlesAction]" <> requestUrl
 
     let symbolCode = param @Text "symbolCode"
@@ -34,7 +34,7 @@ instance Controller APIController where
     renderJson res
 
   -- Return symbol counts (complete immediately; skipCheck reserved for consistency)
-  action SymbolsAction = do
+  action APISymbolsAction = do
     logController Info $ "[APIController][SymbolsAction]" <> requestUrl
     res <- serveTwoPhase SymbolsCtx
     renderJson res
