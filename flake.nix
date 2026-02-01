@@ -63,6 +63,7 @@
           packages = [
             pkgs.python3
             pkgs.gcc
+            pkgs.esbuild
           ];
           enterShell = ''
             # python

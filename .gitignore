@@ -26,5 +26,5 @@ devenv.local.nix
 
 .venv
 .psc-ide-port
-ps/.spago
-ps/output
+purescript/.spago
+purescript/output
