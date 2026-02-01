@@ -11,6 +11,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import           Generated.Enums
 import           Generated.Types
+import           IHP.RouterPrelude (endOfInput, string)
 import           Web.Prelude
 
 -- Application
@@ -24,6 +25,7 @@ data NoteController = NoteAction deriving (Eq, Show, Data)
 data RuntimeController = RuntimeAction deriving (Eq, Show, Data)
 data StrategyController = StrategyAction deriving (Eq, Show, Data)
 data StaticController = StaticAction deriving (Eq, Show, Data)
+data NotifyController = NotifyAction deriving (Eq, Show, Data)
 
 -- Route
 instance AutoRoute APIController
@@ -33,6 +35,10 @@ instance AutoRoute NoteController
 instance AutoRoute RuntimeController
 instance AutoRoute StrategyController
 instance AutoRoute StaticController
+instance CanRoute NotifyController where
+  parseRoute' = string "/sse/notify" <* endOfInput >> pure NotifyAction
+instance HasPath NotifyController where
+  pathTo NotifyAction = "/sse/notify"
 
 -- Web
 data SelectedSymbol = SelectedSymbol

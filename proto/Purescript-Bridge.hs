@@ -21,7 +21,7 @@ myBridge = defaultBridge
 
 main :: IO ()
 main = do
-  let outDir = "purescript/src/Proto"   -- PureScript output directory
+  let outDir = "purescript/src"   -- PureScript output directory
       bridge = buildBridge myBridge
       types  =
         [ mkSumType (Proxy @SymbolCountsResponse)
@@ -29,7 +29,7 @@ main = do
         , mkSumType (Proxy @CandlesResponse)
         ]
   writePSTypes outDir bridge types
-  postProcessSymbols "purescript/src/Proto/Proto/Symbols.purs"
+  postProcessSymbols "purescript/src/Proto/Symbols.purs"
 
 postProcessSymbols :: FilePath -> IO ()
 postProcessSymbols path = do

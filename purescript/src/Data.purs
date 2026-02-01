@@ -1,4 +1,4 @@
-module Data (runDataFRP) where
+module Data (combineDataFRP) where
 
 import Prelude
 
@@ -14,7 +14,8 @@ import Effect (Effect)
 import Effect.Class (liftEffect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Console (log)
-import FRP.Event (Event, create, subscribe)
+import FRP.Event (Event, create)
+import FRP as FRP
 import Web.DOM.ParentNode (QuerySelector(..), querySelectorAll)
 import Web.DOM.Element (Element, fromNode, getAttribute, toNode)
 import Web.DOM.NodeList (toArray)
@@ -54,8 +55,8 @@ renderSymbols :: SymbolCountsResponse -> Array Element -> Effect Unit
 renderSymbols resp els = traverse_ (updateSymbolCounts resp) els
 
 -- FRP wiring: build refresh events -> responses behavior -> render
-runDataFRP :: Event Unit -> Event Unit -> Effect Unit
-runDataFRP initEvent wsEvent = do
+combineDataFRP :: Event Unit -> Event Unit -> Effect Unit
+combineDataFRP initEvent wsEvent = do
   win <- window
   doc <- document win
   nodes <- querySelectorAll (QuerySelector "[data-frp-symbol-count]") (HTMLDoc.toParentNode doc) >>= toArray
@@ -67,19 +68,20 @@ runDataFRP initEvent wsEvent = do
     { event: _, push: pushResponse } <- create
 
     -- when a refresh is requested, fetch then push response
-    _ <- subscribe refreshes \skipCheck ->
+    _ <- FRP.subscribeWithLog refreshes "[FRP][subscribe][refreshes] skipCheck=" \skipCheck -> do
       launchAff_ do
         resp <- fetchSymbols skipCheck
         liftEffect do
-          pushResponse resp
+          FRP.pushWithLog (\_ -> pushResponse resp) "[FRP][push][response]"
           renderSymbols resp els
 
-    _ <- subscribe initEvent \_ -> do
+    _ <- FRP.subscribeWithLog initEvent "[FRP][subscribe][initEvent]" \_ -> do
       setLoading els
-      pushRefresh false
+      FRP.pushWithLog (\_ -> pushRefresh false) "[FRP][push][refreshes] skipCheck=false"
     
     -- websocket notify to re-fetch (skip cache check)
-    _ <- subscribe wsEvent \_ -> pushRefresh true
+    _ <- FRP.subscribeWithLog wsEvent "[FRP][subscribe][wsEvent]" \_ -> do
+      FRP.pushWithLog (\_ -> pushRefresh true) "[FRP][push][refreshes] skipCheck=true"
 
     -- NOTE: init event handles first render (DOMContentLoaded/ihp:afterRender)
     pure unit

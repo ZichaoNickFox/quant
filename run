@@ -7,8 +7,10 @@ if [[ "${UPDATE_FLAKE:-}" == "1" ]]; then
   nix flake update
 fi
 
-# purescript (always regenerate Proto/*.purs)
+# purescript
+## generate proto/*.purs
 direnv exec . runghc proto/Purescript-Bridge.hs
+## generate static/ps-bundle.js
 direnv exec . bash -lc 'cd purescript && spago bundle-app --main Main --to ../static/ps-bundle.js --purs-args "--output output"'
 
 # run

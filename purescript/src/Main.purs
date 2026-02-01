@@ -2,44 +2,53 @@ module Main where
 
 import Prelude
 
+import FRP as FRP
+import Data (combineDataFRP)
 import Effect (Effect)
-import Data (runDataFRP)
+import Effect.Console (log)
+import FFI.SSE (attachEventSource)
 import FRP.Event (Event, create)
-import Web.Event.Event (EventType(..))
 import Web.Event.EventTarget (addEventListener, eventListener)
 import Web.HTML (window)
-import Web.HTML.Window (Window, document, location)
-import Web.HTML.Location as Location
-import Web.HTML.HTMLDocument as HTMLDoc
 import Web.HTML.Event.EventTypes as HE
-import Web.Socket.WebSocket as WS
-import Web.Socket.Event.EventTypes as WSE
+import Web.HTML.HTMLDocument as HTMLDoc
+import Web.HTML.Window (document)
 
 main :: Effect Unit
 main = do
+  { event: domEvent, push: domPush } <- create
+  { event: frpEvent, push: frpPush } <- create
+  let beginEvent = combineBeginEvent domEvent frpEvent
+  _ <- FRP.subscribeWithLog beginEvent "[FRP][event][begin]" \_ -> pure unit
   win <- window
   doc <- document win
-  initEvent <- initRenderEvent doc
-  wsEvent <- wsNotifyEvent win
-  runDataFRP initEvent wsEvent
+  bindDomEvent doc domPush
+  notifyEvent <- bindNotifyEvent
+  combineDataFRP beginEvent notifyEvent
+  FRP.pushWithLog frpPush "[FRP][push][frp]"
 
-initRenderEvent :: HTMLDoc.HTMLDocument -> Effect (Event Unit)
-initRenderEvent doc = do
-  { event, push } <- create
-  onInit <- eventListener (\_ -> push unit)
+bindDomEvent :: HTMLDoc.HTMLDocument -> (Unit -> Effect Unit) -> Effect Unit
+bindDomEvent doc domPush = do
+  onInit <- eventListener (\_ -> do
+    FRP.pushWithLog domPush "[FRP][push][dom]"
+    )
   addEventListener HE.domcontentloaded onInit false (HTMLDoc.toEventTarget doc)
-  addEventListener (EventType "ihp:afterRender") onInit false (HTMLDoc.toEventTarget doc)
+  pure unit
+
+bindNotifyEvent :: Effect (Event Unit)
+bindNotifyEvent = do
+  { event, push } <- create
+  attachEventSource "/sse/notify" (\_ -> push unit)
   pure event
 
-wsNotifyEvent :: Window -> Effect (Event Unit)
-wsNotifyEvent win = do
+bindRuntimeEvent :: Effect (Event Unit)
+bindRuntimeEvent = do
   { event, push } <- create
-  loc <- location win
-  proto <- Location.protocol loc
-  host <- Location.host loc
-  let wsProto = if proto == "https:" then "wss:" else "ws:"
-      url = wsProto <> "//" <> host <> "/ws/notify"
-  ws <- WS.create url []
-  onMsg <- eventListener (\_ -> push unit)
-  addEventListener WSE.onMessage onMsg false (WS.toEventTarget ws)
+  attachEventSource "/sse/runtime" (\_ -> push unit)
   pure event
+
+combineBeginEvent :: Event Unit -> Event Unit -> Event Unit
+combineBeginEvent domEvent frpEvent =
+  FRP.take1 $
+    FRP.map (const unit) $
+      FRP.combineLatest2 domEvent frpEvent

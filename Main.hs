@@ -10,10 +10,10 @@ import Web.Types
 import Web.Workers
 
 instance FrontController RootApplication where
-    controllers = [ mountFrontController WebApplication ]
+  controllers = [ mountFrontController WebApplication ]
 
 instance Worker RootApplication where
-    workers _ = workers WebApplication
+  workers _ = workers WebApplication
 
 main :: IO ()
 main = IHP.Server.run config
