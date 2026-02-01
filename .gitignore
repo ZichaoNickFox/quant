@@ -28,3 +28,4 @@ devenv.local.nix
 .psc-ide-port
 purescript/.spago
 purescript/output
+static/ps-bundle.js
