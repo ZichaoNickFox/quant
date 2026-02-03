@@ -3,7 +3,6 @@ module Web.Fetcher.Python
   ( PythonError (..)
   , renderPythonError
   , runPython
-  , pythonTimeoutUs
   ) where
 
 import           Control.Exception             (IOException, displayException, try)
@@ -17,9 +16,6 @@ import           System.Exit
 import           System.Process
 import           System.Timeout                (timeout)
 import           Web.Prelude                    hiding (error)
-
-pythonTimeoutUs :: Int
-pythonTimeoutUs = 10 * 1000 * 1000
 
 data PythonError
   = PythonTimeout

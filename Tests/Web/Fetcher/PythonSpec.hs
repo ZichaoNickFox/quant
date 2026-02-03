@@ -77,6 +77,14 @@ tests = do
           Left (PythonSpawnError _) -> pure ()
           other -> expectationFailure ("expected PythonSpawnError, got " <> show other)
 
+    it "returns ExitFailure when script path is missing" $ withLogger $ \logger -> withTempDir $ \dir -> do
+      let ?context = logger
+      let script = dir </> "missing.py"
+      result <- runPython 10000 (Text.pack script) (A.object []) False :: IO (Either PythonError A.Value)
+      case result of
+        Left (PythonExitFailure _ _) -> pure ()
+        other -> expectationFailure ("expected PythonExitFailure, got " <> show other)
+
     it "prefers .venv/bin/python when present" $ withLogger $ \logger -> withTempDir $ \dir -> do
       let ?context = logger
       setupFakeVenvPython dir True
