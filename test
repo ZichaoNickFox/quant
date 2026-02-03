@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# env
+direnv allow .
+if [[ "${UPDATE_FLAKE:-}" == "1" ]]; then
+  nix flake update
+fi
+
+# purescript tests
+direnv exec . bash -lc 'cd purescript && spago test --main Test.Main'
+
+# backend tests (mocked/pure)
+direnv exec . bash -lc 'runghc $(make print-ghc-extensions) -i. -ibuild -iConfig Tests/Main.hs'

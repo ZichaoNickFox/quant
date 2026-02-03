@@ -52,7 +52,8 @@
             text
 
             # Uncomment on local development for testing
-            # hspec
+            hspec
+            ihp-hspec
           ];
         };
 
