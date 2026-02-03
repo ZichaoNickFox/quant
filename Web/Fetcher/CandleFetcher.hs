@@ -1,12 +1,12 @@
 module Web.Fetcher.CandleFetcher
   ( CandleRange (..)
-  , getCandles
+  , fetchCandles
   ) where
 
 import           Control.Applicative          ((<|>))
 import           Data.Aeson
-import           Data.Maybe
 import           Data.Text                      hiding (length)
+import qualified Data.Text                      as Text
 import           Data.Time
 import           Data.UUID                      (UUID)
 import           GHC.Generics
@@ -60,12 +60,12 @@ fetchCandles
   :: (?context :: context, LoggingProvider context)
   => CandleRange -> IO [Candle]
 fetchCandles candleRange = do
-  logInfo $ ("[downloadCandles] begin | parameter : " <> tshow candleRange :: Text)
-  result <- fromJust <$> (runPython "Web/Fetcher/candle_fetcher.py" candleRange False :: IO (Maybe [Candle]))
-  logInfo $ "[downloadCandles] end | nums - " <> tshow (length result)
-  pure result
-
-getCandles
-  :: (?context :: context, LoggingProvider context)
-  => CandleRange -> IO [Candle]
-getCandles = fetchCandles
+  logInfo $ ("[fetchCandles] begin | parameter : " <> tshow candleRange :: Text)
+  result <- runPython 10000 "Web/Fetcher/candle_fetcher.py" candleRange False :: IO (Either PythonError [Candle])
+  case result of
+    Right candles -> do
+      logInfo $ "[fetchCandles] end | nums - " <> tshow (length candles)
+      pure candles
+    Left err -> do
+      logError $ "[fetchCandles] python error : " <> renderPythonError err
+      fail (Text.unpack (renderPythonError err))

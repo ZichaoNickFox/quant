@@ -1,15 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Web.Fetcher.SymbolFetcher
-  ( downloadSymbols
+  ( fetchSymbols
   ) where
 
 import           Data.Aeson
-import           Data.Maybe
 import           Data.String.Conversions
 import           Data.Text hiding (length)
-import           Data.UUID                       (UUID)
-import qualified Data.Vector                     as V
+import qualified Data.Text                      as Text
 import           Database.PostgreSQL.Simple.ToField (ToField(..), toField)
 import           Database.PostgreSQL.Simple.ToRow (ToRow(..))
 import           Database.PostgreSQL.Simple.Types (Query (..))
@@ -61,10 +59,12 @@ instance ToRow Symbol where
 
 fetchSymbols :: (?context :: context, LoggingProvider context) => SymbolType -> IO [Symbol]
 fetchSymbols symbolType = do
-  logInfo $ ("[downloadSymbols] begin | parameter : " <> tshow symbolType :: Text)
-  result <- fromJust <$> (runPython "Web/Fetcher/symbol_fetcher.py" symbolType False :: IO (Maybe [Symbol]))
-  logInfo $ "[downloadSymbols] end | nums - " <> tshow (length result)
-  return result
-
-downloadSymbols :: (?context :: context, LoggingProvider context) => SymbolType -> IO [Symbol]
-downloadSymbols = fetchSymbols
+  logInfo $ ("[fetchSymbols] begin | parameter : " <> tshow symbolType :: Text)
+  result <- runPython 10000 "Web/Fetcher/symbol_fetcher.py" symbolType False :: IO (Either PythonError [Symbol])
+  case result of
+    Right symbols -> do
+      logInfo $ "[fetchSymbols] end | nums - " <> tshow (length symbols)
+      return symbols
+    Left err -> do
+      logError $ "[fetchSymbols] python error : " <> renderPythonError err
+      fail (Text.unpack (renderPythonError err))

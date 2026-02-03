@@ -16,9 +16,9 @@ instance ToJSON SymbolInfo
 instance FromJSON SymbolInfo
 
 -- | Response payload for /APISymbols
--- symbols: list of all symbols (client can group by symbolType)
 -- complete: True when server believes data already complete; False means a
 --           background job was kicked off and client should re-fetch when notified.
+-- symbols: list of all symbols (client can group by symbolType)
 data APISymbolsResponse = APISymbolsResponse
   { complete :: Bool
   , symbols  :: [SymbolInfo]

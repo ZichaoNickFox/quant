@@ -9,5 +9,5 @@ import           Web.Prelude
 
 class RespondPolicy ctx where
   type RespondPayload ctx
-  respondHttp :: ctx -> RespondPayload ctx -> A.Value
+  respondHttp :: ctx -> Bool -> RespondPayload ctx -> A.Value
   respondSse :: ctx -> SseStatus -> A.Value

@@ -6,7 +6,7 @@ module Proto.SseStatus
   , sseStatusFromText
   ) where
 
-import           Data.Aeson (FromJSON(..), ToJSON(..), Value(..), withText)
+import           Data.Aeson (FromJSON(..), ToJSON(..), Value(..), object, withObject, withText, (.:), (.:?), (.=))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           GHC.Generics (Generic)
@@ -15,29 +15,35 @@ import           Prelude
 data SseStatus
   = Success
   | Duplicated
-  | Failed
+  | Failed Text
   deriving (Show, Eq, Generic)
 
 sseStatusToText :: SseStatus -> Text
 sseStatusToText = \case
   Success    -> "success"
   Duplicated -> "duplicated"
-  Failed     -> "failed"
+  Failed _   -> "failed"
 
 sseStatusFromText :: Text -> Maybe SseStatus
 sseStatusFromText t =
   case T.toLower t of
     "success"    -> Just Success
     "duplicated" -> Just Duplicated
-    "duplicate"  -> Just Duplicated
-    "failed"     -> Just Failed
+    "failed"     -> Just (Failed "")
     _            -> Nothing
 
 instance ToJSON SseStatus where
-  toJSON = String . sseStatusToText
+  toJSON status =
+    case status of
+      Success -> object [ "status" .= ("success" :: Text) ]
+      Duplicated -> object [ "status" .= ("duplicated" :: Text) ]
+      Failed reason -> object [ "status" .= ("failed" :: Text), "reason" .= reason ]
 
 instance FromJSON SseStatus where
-  parseJSON = withText "SseStatus" \t ->
-    case sseStatusFromText t of
-      Just v -> pure v
-      Nothing -> fail ("unknown SseStatus: " <> T.unpack t)
+  parseJSON = withObject "SseStatus" \obj -> do
+    status <- obj .: "status"
+    reason <- obj .:? "reason"
+    case (sseStatusFromText status, reason) of
+      (Just (Failed _), Just r) -> pure (Failed r)
+      (Just v, _) -> pure v
+      _ -> fail ("unknown SseStatus: " <> T.unpack status)

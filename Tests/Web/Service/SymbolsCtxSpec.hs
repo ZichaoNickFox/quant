@@ -16,13 +16,20 @@ tests = do
     it "respondHttp renders expected fields" do
       let ctx = SymbolsCtx { clientId = "client-a" }
           payload = Proto.APISymbolsResponse { complete = True, symbols = [] }
-      respondHttp ctx payload `shouldBe`
-        A.object [ "symbols" A..= ([] :: [Proto.SymbolInfo]) ]
+      respondHttp ctx True payload `shouldBe`
+        A.object
+          [ "complete" A..= True
+          , "symbols" A..= ([] :: [Proto.SymbolInfo])
+          ]
 
     it "respondSse success/failed" do
       let ctx = SymbolsCtx { clientId = "client-a" }
       respondSse ctx Success `shouldBe` A.object [ "status" A..= ("success" :: String) ]
-      respondSse ctx Failed `shouldBe` A.object [ "status" A..= ("failed" :: String) ]
+      respondSse ctx (Failed "err") `shouldBe`
+        A.object
+          [ "status" A..= ("failed" :: String)
+          , "reason" A..= ("err" :: String)
+          ]
 
   describe "SymbolsCtx TTLPolicy" do
     it "ttlKey and ttlSeconds" do

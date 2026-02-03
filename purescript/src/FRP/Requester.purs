@@ -9,11 +9,13 @@ import Affjax.ResponseFormat as RF
 import Affjax.Web as AX
 import Data.Argonaut.Decode (class DecodeJson, decodeJson)
 import Data.Either (Either(..))
+import Data.String (drop, take)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
 import FRP.Event (Event, create, subscribe)
 import FRP.Log (pushWithLog, subscribeWithLog)
+import Proto.SseStatus (SseStatus(..))
 
 createRequester
   :: forall req resp
@@ -43,7 +45,7 @@ createColdWarmRequester
    . Show resp
   => DecodeJson resp
   => String
-  -> Event Unit
+  -> Event SseStatus
   -> Effect
        { requestPush :: Unit -> Effect Unit
        , responseEvent :: Event (Either String resp)
@@ -52,7 +54,9 @@ createColdWarmRequester route notifyEvent = do
   { event: requestEvent, push: requestPush } <- create
   { event: responseEvent, push: responsePush } <- create
 
-  _ <- subscribeWithLog requestEvent ("[" <> route <> "] request") \_ -> do
+  let logRoute = if take 1 route == "/" then drop 1 route else route
+
+  _ <- subscribeWithLog requestEvent ("[" <> logRoute <> "] request") \_ -> do
     launchAff_ do
       res <- AX.get RF.json route
       let
@@ -61,11 +65,13 @@ createColdWarmRequester route notifyEvent = do
             Left err -> Left ("Request error: " <> AX.printError err)
             Right r ->
               case decodeJson r.body of
-                Left err -> Left ("decode error: " <> show err)
+                Left err -> Left ("Decode error: " <> show err)
                 Right v -> Right v
-      liftEffect $ pushWithLog responsePush ("[" <> route <> "] response=") resp
+      liftEffect $ pushWithLog responsePush ("[" <> logRoute <> "] response") resp
 
-  _ <- subscribe notifyEvent \_ ->
-    requestPush unit
+  _ <- subscribeWithLog notifyEvent ("[" <> logRoute <> "] notify") \status ->
+    case status of
+      Success -> pushWithLog requestPush ("[" <> logRoute <> "] request") unit
+      _ -> pure unit
 
-  pure { requestPush, responseEvent }
+  pure { requestPush: requestPush , responseEvent }

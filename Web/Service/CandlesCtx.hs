@@ -9,17 +9,20 @@ import           Data.Text (pack)
 import           Data.Time (LocalTime, defaultTimeLocale, formatTime)
 import           Data.Typeable (Typeable)
 import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy as LBS
 import qualified Proto.Candles as Proto
-import           Proto.SseStatus (SseStatus)
-import           Web.Prelude
-import           Web.Fetcher.CandleFetcher (CandleRange(..), getCandles)
+import           Proto.SseStatus (SseStatus(..))
+import           Web.Prelude hiding (Success)
+import           Web.Fetcher.CandleFetcher (CandleRange(..), fetchCandles)
 import           Web.Repo.CandleRepo (getCandlesWindow, hasCoverage, upsertCandles)
 import           Web.Repo.SymbolRepo (clampCandleWindow, getSymbolByCodeType)
 import           Web.Service.Policy.CoveragePolicy
 import           Web.Service.Policy.RepoPolicy
+import           Web.Service.Policy.NotifyPolicy
 import           Web.Service.Policy.RespondPolicy
 import           Web.Service.Policy.FetchPolicy (FetchPolicy(..))
 import           Web.Types
+import           Web.Service.Infrastructure.NotifyHub (publishToClient)
 
 data CandlesCtx = CandlesCtx
   { symbolType :: SymbolType
@@ -63,7 +66,7 @@ instance FetchPolicy CandlesCtx where
               , fromDatetime = toText fromC
               , toDatetime = toText toC
               }
-        getCandles candleRange
+        fetchCandles candleRange
 
 ------------------
 instance RepoPolicy CandlesCtx where
@@ -71,7 +74,7 @@ instance RepoPolicy CandlesCtx where
   readFromRepo CandlesCtx { symbolType, symbolCode, timeframe, fromDt, toDt } = do
     mbSymbol <- getSymbolByCodeType symbolType symbolCode
     case mbSymbol of
-      Nothing -> pure $ Proto.CandlesResponse False (show symbolType) symbolCode timeframe []
+      Nothing -> pure $ Proto.CandlesResponse True (show symbolType) symbolCode timeframe []
       Just sym -> do
         let uuid = case sym of Symbol { id = Id u } -> u
         cs <- getCandlesWindow uuid timeframe fromDt toDt
@@ -90,13 +93,27 @@ instance RepoPolicy CandlesCtx where
 ------------------
 instance RespondPolicy CandlesCtx where
   type RespondPayload CandlesCtx = Proto.CandlesResponse
-  respondHttp _ (Proto.CandlesResponse _ st code tf pts) =
+  respondHttp _ complete (Proto.CandlesResponse _ st code tf pts) =
     A.object
-      ( [ "symbolType" A..= st
+      ( [ "complete" A..= complete
+        , "symbolType" A..= st
         , "symbolCode" A..= code
         , "timeframe" A..= tf
         , "data" A..= pts
         ]
       )
   respondSse _ status =
-    A.object [ "status" A..= status ]
+    case status of
+      Success ->
+        A.object [ "status" A..= ("success" :: Text) ]
+      Duplicated ->
+        A.object [ "status" A..= ("duplicated" :: Text) ]
+      Failed reason ->
+        A.object
+          [ "status" A..= ("failed" :: Text)
+          , "reason" A..= reason
+          ]
+
+instance NotifyPolicy CandlesCtx where
+  notifySse ctx status =
+    publishToClient (get #clientId ctx) (LBS.toStrict (A.encode (respondSse ctx status)))

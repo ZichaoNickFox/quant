@@ -7,20 +7,23 @@ module Web.Service.SymbolsCtx
 
 import           Data.Typeable (Typeable)
 import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Proto.Symbols as Proto
-import           Proto.SseStatus (SseStatus)
-import           Web.Prelude
+import           Proto.SseStatus (SseStatus(..))
+import           Web.Prelude hiding (Success)
 import           Web.Repo.SymbolRepo (getSymbolsByTypeMap, upsertSymbols)
-import           Web.Fetcher.SymbolFetcher (downloadSymbols)
+import           Web.Fetcher.SymbolFetcher (fetchSymbols)
 import           Web.Service.Policy.CoveragePolicy
 import           Web.Service.Policy.RepoPolicy
+import           Web.Service.Policy.NotifyPolicy
 import           Web.Service.Policy.RespondPolicy
 import           Web.Service.Policy.FetchPolicy (FetchPolicy(..))
 import           Web.Service.Policy.TTLPolicy
 import           Web.Types
 import qualified Web.Service.Process.TTLProcess as TTLProcess
+import           Web.Service.Infrastructure.NotifyHub (publishToClient)
 
 data SymbolsCtx = SymbolsCtx
   { clientId :: Text
@@ -36,7 +39,7 @@ instance FetchPolicy SymbolsCtx where
   type FetchResult SymbolsCtx = [Symbol]
   fetchTask _ = do
     let sts = [minBound .. maxBound] :: [SymbolType]
-    concat <$> forM sts downloadSymbols
+    concat <$> forM sts fetchSymbols
 
 ------------------
 instance RepoPolicy SymbolsCtx where
@@ -65,10 +68,24 @@ instance TTLPolicy SymbolsCtx where
 ------------------
 instance RespondPolicy SymbolsCtx where
   type RespondPayload SymbolsCtx = Proto.APISymbolsResponse
-  respondHttp _ Proto.APISymbolsResponse { symbols } =
+  respondHttp _ complete Proto.APISymbolsResponse { symbols } =
     A.object
-      ( [ "symbols" A..= symbols
+      ( [ "complete" A..= complete
+        , "symbols" A..= symbols
         ]
       )
   respondSse _ status =
-    A.object [ "status" A..= status ]
+    case status of
+      Success ->
+        A.object [ "status" A..= ("success" :: Text) ]
+      Duplicated ->
+        A.object [ "status" A..= ("duplicated" :: Text) ]
+      Failed reason ->
+        A.object
+          [ "status" A..= ("failed" :: Text)
+          , "reason" A..= reason
+          ]
+
+instance NotifyPolicy SymbolsCtx where
+  notifySse ctx status =
+    publishToClient (get #clientId ctx) (LBS.toStrict (A.encode (respondSse ctx status)))

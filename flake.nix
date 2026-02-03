@@ -68,17 +68,31 @@
           ];
           enterShell = ''
             # python
-            # 如果还没有 .venv，就创建并安装依赖
             echo "enterShell"
-            if [ ! -d .venv ]; then
+            ensure_py_deps() {
+              if ! "$VENV_PY" -c "import tushare, akshare" >/dev/null 2>&1; then
+                echo "[devenv] missing akshare/tushare, installing ..."
+                "$VENV_PY" -m pip install --upgrade pip wheel setuptools
+                "$VENV_PY" -m pip install akshare tushare
+              fi
+            }
+            VENV_PY=".venv/bin/python"
+            if [ ! -x "$VENV_PY" ]; then
               echo "[devenv] creating .venv and installing akshare/tushare ..."
-              python3 -m venv .venv
+              rm -rf .venv
+              python3 -m venv --without-pip .venv
+              if [ ! -x "$VENV_PY" ]; then
+                echo "[devenv] venv create failed: $VENV_PY missing"
+                exit 1
+              fi
+              "$VENV_PY" -m ensurepip --upgrade
+              "$VENV_PY" -m pip install --upgrade pip wheel setuptools
               source .venv/bin/activate
-              pip install --upgrade pip wheel setuptools
-              pip install akshare tushare
+              ensure_py_deps
             else
               echo "[devenv] using existing .venv"
               source .venv/bin/activate
+              ensure_py_deps
             fi
           '';
 

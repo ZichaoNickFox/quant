@@ -10,6 +10,7 @@
   , "affjax-web"
   , "arrays"
   , "argonaut"
+  , "argonaut-core"
   , "argonaut-aeson-generic"
   , "argonaut-codecs"
   , "behaviors"

@@ -4,4 +4,4 @@ import Prelude
 
 import Effect (Effect)
 
-foreign import attachEventSource :: String -> (Unit -> Effect Unit) -> Effect Unit
+foreign import attachEventSource :: String -> (String -> Effect Unit) -> Effect Unit

@@ -21,7 +21,6 @@ instance ToJSON Candle
 instance FromJSON Candle
 
 -- | Response payload for /api/candles
--- complete flag same semantics as symbols API.
 data CandlesResponse = CandlesResponse
   { complete :: Bool
   , symbolType :: Text

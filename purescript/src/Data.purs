@@ -8,6 +8,7 @@ import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import FRP as FRP
+import Proto.SseStatus (SseStatus)
 import Proto.Symbols (APISymbolsResponse(..), SymbolInfo(..))
 import Web.DOM.Document (createElement)
 import Web.DOM.Element (Element, fromNode, getAttribute, setAttribute, toNode)
@@ -48,7 +49,7 @@ renderSymbolList htmlDoc symbols = do
       appendChild (toNode opt) (toNode listEl)
 
 -- FRP wiring: build refresh events -> responses behavior -> render
-combineDataFRP :: FRP.Event Unit -> FRP.Event Unit -> Effect Unit
+combineDataFRP :: FRP.Event Unit -> FRP.Event SseStatus -> Effect Unit
 combineDataFRP initEvent notifyEvent = do
   win <- window
   doc <- document win
@@ -60,16 +61,16 @@ combineDataFRP initEvent notifyEvent = do
         "/APISymbols"
         notifyEvent
 
-    _ <- FRP.subscribeWithLog apiSymbolsResponses "[APISymbolsResponse](Data)" \resp -> do
+    _ <- FRP.subscribeWithLog apiSymbolsResponses "[APISymbols] Response" \resp -> do
       case resp of
         Left _ -> pure unit
         Right (APISymbolsResponse r) -> do
           renderSymbolCounts r.symbols els
           renderSymbolList doc r.symbols
 
-    _ <- FRP.subscribeWithLog initEvent "[init](Data)" \_ -> do
+    _ <- FRP.subscribeWithLog initEvent "[init]" \_ -> do
       setLoading els
-      pushApiSymbolsRequest unit
+      FRP.pushWithLog pushApiSymbolsRequest "[APISymbols] request" unit
 
     -- NOTE: init event handles first render (DOMContentLoaded/ihp:afterRender)
     pure unit

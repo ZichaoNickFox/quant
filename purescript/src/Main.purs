@@ -3,9 +3,14 @@ module Main where
 import Prelude
 
 import Data (combineDataFRP)
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Argonaut.Decode (decodeJson)
+import Data.Argonaut.Parser (jsonParser)
+import Data.Either (Either(..))
 import Effect (Effect)
 import FFI.SSE (attachEventSource)
 import FRP as FRP
+import Proto.SseStatus (SseStatus(..), sseStatusFromString)
 import Web.Event.EventTarget (addEventListener, eventListener)
 import Web.HTML (window)
 import Web.HTML.Event.EventTypes as HE
@@ -19,12 +24,12 @@ main = do
   { event: beginEvent, push: beginPush } <- FRP.create
 
   -- subscribe
-  _ <- FRP.subscribeWithLog domEvent "[dom](Main)" \_ -> do
+  _ <- FRP.subscribeWithLog domEvent "[dom]" \_ -> do
     notifyEvent <- bindNotifyEvent
     combineDataFRP beginEvent notifyEvent
-    FRP.pushWithLogUnit beginPush "[begin](Main)"
+    FRP.pushWithLog beginPush "[begin]" unit
     pure unit
-  _ <- FRP.subscribeWithLog beginEvent "[begin](Main)" \_ -> do
+  _ <- FRP.subscribeWithLog beginEvent "[begin]" \_ -> do
     pure unit
 
   win <- window
@@ -35,13 +40,23 @@ main = do
 bindDomEvent :: HTMLDoc.HTMLDocument -> (Unit -> Effect Unit) -> Effect Unit
 bindDomEvent doc domPush = do
   onInit <- eventListener (\_ -> do
-    FRP.pushWithLogUnit domPush "[dom](Main)"
+    FRP.pushWithLog domPush "[dom]" unit
     )
   addEventListener HE.domcontentloaded onInit false (HTMLDoc.toEventTarget doc)
   pure unit
 
-bindNotifyEvent :: Effect (FRP.Event Unit)
+bindNotifyEvent :: Effect (FRP.Event SseStatus)
 bindNotifyEvent = do
   { event, push } <- FRP.create
-  attachEventSource "/sse/notify" (\_ -> push unit)
+  attachEventSource "/sse/notify" \raw ->
+    case jsonParser raw of
+      Left _ -> pure unit
+      Right json ->
+        case (decodeJson json :: Either _ { status :: String, reason :: Maybe String }) of
+          Right payload ->
+            case sseStatusFromString payload.status of
+              Just (Failed _) -> push (Failed (fromMaybe "" payload.reason))
+              Just v -> push v
+              Nothing -> pure unit
+          Left _ -> pure unit
   pure event

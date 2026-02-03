@@ -23,9 +23,10 @@ tests = do
             , clientId = "client-a"
             }
           payload = Proto.CandlesResponse True "stock" "AAPL" 1 []
-      respondHttp ctx payload `shouldBe`
+      respondHttp ctx True payload `shouldBe`
         A.object
-          [ "symbolType" A..= ("stock" :: String)
+          [ "complete" A..= True
+          , "symbolType" A..= ("stock" :: String)
           , "symbolCode" A..= ("AAPL" :: String)
           , "timeframe" A..= (1 :: Int)
           , "data" A..= ([] :: [Proto.Candle])
@@ -41,4 +42,8 @@ tests = do
             , clientId = "client-a"
             }
       respondSse ctx Success `shouldBe` A.object [ "status" A..= ("success" :: String) ]
-      respondSse ctx Failed `shouldBe` A.object [ "status" A..= ("failed" :: String) ]
+      respondSse ctx (Failed "err") `shouldBe`
+        A.object
+          [ "status" A..= ("failed" :: String)
+          , "reason" A..= ("err" :: String)
+          ]

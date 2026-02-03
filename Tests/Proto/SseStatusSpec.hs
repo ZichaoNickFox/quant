@@ -12,16 +12,15 @@ tests = do
     it "sseStatusToText" do
       sseStatusToText Success `shouldBe` "success"
       sseStatusToText Duplicated `shouldBe` "duplicated"
-      sseStatusToText Failed `shouldBe` "failed"
+      sseStatusToText (Failed "err") `shouldBe` "failed"
 
-    it "sseStatusFromText (case-insensitive + duplicate alias)" do
+    it "sseStatusFromText (case-insensitive)" do
       sseStatusFromText "success" `shouldBe` Just Success
       sseStatusFromText "SUCCESS" `shouldBe` Just Success
-      sseStatusFromText "duplicate" `shouldBe` Just Duplicated
       sseStatusFromText "duplicated" `shouldBe` Just Duplicated
-      sseStatusFromText "failed" `shouldBe` Just Failed
+      sseStatusFromText "failed" `shouldBe` Just (Failed "")
       sseStatusFromText "unknown" `shouldBe` Nothing
 
     it "ToJSON/FromJSON roundtrip" do
-      let values = [Success, Duplicated, Failed]
+      let values = [Success, Duplicated, Failed "err"]
       mapM_ (\v -> A.decode (A.encode v) `shouldBe` Just v) values
