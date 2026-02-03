@@ -2,86 +2,74 @@ module Data (combineDataFRP) where
 
 import Prelude
 
-import Affjax.Web as AX
-import Affjax.ResponseFormat as RF
-import Data.Argonaut.Decode (decodeJson)
-import Data.Array (mapMaybe, length, null)
+import Data.Array (filter, length, mapMaybe, null)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
-import Data.Maybe (Maybe(..), fromMaybe)
-import Foreign.Object as FO
+import Data.Maybe (Maybe(..))
 import Effect (Effect)
-import Effect.Class (liftEffect)
-import Effect.Aff (Aff, launchAff_)
-import Effect.Console (log)
-import FRP.Event (Event, create)
 import FRP as FRP
-import Web.DOM.ParentNode (QuerySelector(..), querySelectorAll)
-import Web.DOM.Element (Element, fromNode, getAttribute, toNode)
+import Proto.Symbols (APISymbolsResponse(..), SymbolInfo(..))
+import Web.DOM.Document (createElement)
+import Web.DOM.Element (Element, fromNode, getAttribute, setAttribute, toNode)
+import Web.DOM.Node (appendChild, setTextContent)
 import Web.DOM.NodeList (toArray)
-import Web.DOM.Node (setTextContent)
+import Web.DOM.ParentNode (QuerySelector(..), querySelector, querySelectorAll)
 import Web.HTML (window)
-import Web.HTML.Window (document)
 import Web.HTML.HTMLDocument as HTMLDoc
-import Proto.Symbols (SymbolCountsResponse(..), SymbolCountsResponseJson(..))
-
-fetchSymbols :: Boolean -> Aff SymbolCountsResponse
-fetchSymbols skipCheck = do
-  let qs = if skipCheck then "?skipCheck=true" else ""
-  res <- AX.get RF.json ("/APISymbols" <> qs)
-  case res of
-    Left err -> do
-      liftEffect $ log $ "fetch symbols error: " <> AX.printError err
-      pure $ SymbolCountsResponse { complete: false, counts: FO.empty }
-    Right r ->
-      case decodeJson r.body of
-        Left err -> do liftEffect $ log $ "decode symbols error: " <> show err
-                       pure $ SymbolCountsResponse { complete: false, counts: FO.empty }
-        Right (SymbolCountsResponseJson v) -> pure v
+import Web.HTML.Window (document)
 
 setLoading :: Array Element -> Effect Unit
 setLoading = traverse_ \el -> setTextContent "..." (toNode el)
 
-updateSymbolCounts :: SymbolCountsResponse -> Element -> Effect Unit
-updateSymbolCounts (SymbolCountsResponse r) el = do
-  mType <- getAttribute "data-symbol-type" el
-  case mType of
-    Nothing -> pure unit
-    Just st -> do
-      let val = fromMaybe 0 (FO.lookup st r.counts)
-      setTextContent (st <> ": " <> show val) (toNode el)
+renderSymbolCounts :: Array SymbolInfo -> Array Element -> Effect Unit
+renderSymbolCounts symbols =
+  traverse_ \el -> do
+    mType <- getAttribute "data-symbol-type" el
+    case mType of
+      Nothing -> pure unit
+      Just st -> do
+        let val = length (filter (\(SymbolInfo s) -> s.symbolType == st) symbols)
+        setTextContent (st <> ": " <> show val) (toNode el)
 
-renderSymbols :: SymbolCountsResponse -> Array Element -> Effect Unit
-renderSymbols resp els = traverse_ (updateSymbolCounts resp) els
+renderSymbolList :: HTMLDoc.HTMLDocument -> Array SymbolInfo -> Effect Unit
+renderSymbolList htmlDoc symbols = do
+  mList <- querySelector (QuerySelector "#symbol-list") (HTMLDoc.toParentNode htmlDoc)
+  case mList of
+    Nothing -> pure unit
+    Just listEl -> do
+      setTextContent "" (toNode listEl)
+      let doc' = HTMLDoc.toDocument htmlDoc
+      traverse_ (appendOption doc' listEl) symbols
+  where
+    appendOption doc listEl (SymbolInfo s) = do
+      opt <- createElement "option" doc
+      setAttribute "value" (s.symbolType <> "|" <> s.code) opt
+      setTextContent s.name (toNode opt)
+      appendChild (toNode opt) (toNode listEl)
 
 -- FRP wiring: build refresh events -> responses behavior -> render
-combineDataFRP :: Event Unit -> Event Unit -> Effect Unit
-combineDataFRP initEvent wsEvent = do
+combineDataFRP :: FRP.Event Unit -> FRP.Event Unit -> Effect Unit
+combineDataFRP initEvent notifyEvent = do
   win <- window
   doc <- document win
   nodes <- querySelectorAll (QuerySelector "[data-frp-symbol-count]") (HTMLDoc.toParentNode doc) >>= toArray
   let els = mapMaybe fromNode nodes
   when (not (null els)) do
-    -- refresh requests bus
-    { event: refreshes, push: pushRefresh } <- create
-    -- responses bus
-    { event: _, push: pushResponse } <- create
+    { requestPush: pushApiSymbolsRequest, responseEvent: apiSymbolsResponses } <-
+      FRP.createColdWarmRequester
+        "/APISymbols"
+        notifyEvent
 
-    -- when a refresh is requested, fetch then push response
-    _ <- FRP.subscribeWithLog refreshes "[FRP][subs][refreshes] skipCheck=" \skipCheck -> do
-      launchAff_ do
-        resp <- fetchSymbols skipCheck
-        liftEffect do
-          FRP.pushWithLog (\_ -> pushResponse resp) "[FRP][push][response]"
-          renderSymbols resp els
+    _ <- FRP.subscribeWithLog apiSymbolsResponses "[APISymbolsResponse](Data)" \resp -> do
+      case resp of
+        Left _ -> pure unit
+        Right (APISymbolsResponse r) -> do
+          renderSymbolCounts r.symbols els
+          renderSymbolList doc r.symbols
 
-    _ <- FRP.subscribeWithLog initEvent "[FRP][subs][initEvent]" \_ -> do
+    _ <- FRP.subscribeWithLog initEvent "[init](Data)" \_ -> do
       setLoading els
-      FRP.pushWithLog (\_ -> pushRefresh false) "[FRP][push][refreshes] skipCheck=false"
-    
-    -- websocket notify to re-fetch (skip cache check)
-    _ <- FRP.subscribeWithLog wsEvent "[FRP][subs][wsEvent]" \_ -> do
-      FRP.pushWithLog (\_ -> pushRefresh true) "[FRP][push][refreshes] skipCheck=true"
+      pushApiSymbolsRequest unit
 
     -- NOTE: init event handles first render (DOMContentLoaded/ihp:afterRender)
     pure unit

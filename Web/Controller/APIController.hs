@@ -1,15 +1,14 @@
 module Web.Controller.APIController where
 
+import qualified Data.Aeson                    as A
 import           Data.Text
+import           Data.Text.Encoding (decodeUtf8)
 import           Data.Time                     (LocalTime, addLocalTime, getCurrentTime, getCurrentTimeZone,
                                                 secondsToNominalDiffTime, utcToLocalTime)
-import qualified Data.Aeson                    as A
 import           Web.Prelude
-import           Web.Repository.CandleRepository
-import           Web.Repository.SymbolRepository
-import           Web.Sync.Policy.TwoPhase
-import           Web.Sync.Symbols
-import           Web.Sync.Candles
+import           Web.Service.CandlesCtx (CandlesCtx(..))
+import           Web.Service.Process.ServiceProcess (beginServiceProcess)
+import           Web.Service.SymbolsCtx (SymbolsCtx(..))
 import           Web.Types
 
 instance Controller APIController where
@@ -21,7 +20,6 @@ instance Controller APIController where
         timeframe  = param @Int "timeframe"
         fromParam  = paramOrNothing @LocalTime "from"
         toParam    = paramOrNothing   @LocalTime "to"
-        skipCheck  = fromMaybe False (paramOrNothing @Bool "skipCheck")
         fallbackDays = -30
     now <- getCurrentTime
     tz  <- getCurrentTimeZone
@@ -29,27 +27,26 @@ instance Controller APIController where
         defaultFrom = addLocalTime (secondsToNominalDiffTime (fallbackDays * 86400)) defaultTo
         fromDt = fromMaybe defaultFrom fromParam
         toDt   = fromMaybe defaultTo toParam
-        ctx = CandlesCtx { symbolType, symbolCode, timeframe, fromDt, toDt }
-    res <- serveTwoPhase ctx
+        clientId = fromMaybe "default" $
+          (getHeader "X-Client-Id" >>= (Just . decodeUtf8))
+            <|> paramOrNothing @Text "clientId"
+    let ctx = CandlesCtx
+          { symbolType
+          , symbolCode
+          , timeframe
+          , fromDt
+          , toDt
+          , clientId
+          }
+    res <- beginServiceProcess ctx
     renderJson res
 
   -- Return symbol counts (complete immediately; skipCheck reserved for consistency)
   action APISymbolsAction = do
     logController Info $ "[APIController][SymbolsAction]" <> requestUrl
-    res <- serveTwoPhase SymbolsCtx
+    let clientId = fromMaybe "default" $
+          (getHeader "X-Client-Id" >>= (Just . decodeUtf8))
+            <|> paramOrNothing @Text "clientId"
+    let ctx = SymbolsCtx { clientId }
+    res <- beginServiceProcess ctx
     renderJson res
-
--- Lightweight JSON for Candle
-toChartCandle :: Candle -> A.Value
-toChartCandle c =
-  A.object
-    [ "time"   A..= get #datetime c
-    , "open"   A..= get #open c
-    , "high"   A..= get #high c
-    , "low"    A..= get #low c
-    , "close"  A..= get #close c
-    , "volume" A..= get #volume c
-    , "amount" A..= get #amount c
-    , "symbolId" A..= get #symbolId c
-    , "timeframe" A..= get #timeframe c
-    ]

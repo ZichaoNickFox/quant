@@ -59,12 +59,12 @@ instance ToRow Symbol where
     , toField (get #delistDate s)
     ]
 
-fetchSymbols :: (?context :: FrameworkConfig) => SymbolType -> IO [Symbol]
+fetchSymbols :: (?context :: context, LoggingProvider context) => SymbolType -> IO [Symbol]
 fetchSymbols symbolType = do
   logInfo $ ("[downloadSymbols] begin | parameter : " <> tshow symbolType :: Text)
   result <- fromJust <$> (runPython "Web/Fetcher/symbol_fetcher.py" symbolType False :: IO (Maybe [Symbol]))
   logInfo $ "[downloadSymbols] end | nums - " <> tshow (length result)
   return result
 
-downloadSymbols :: (?context :: FrameworkConfig) => SymbolType -> IO [Symbol]
+downloadSymbols :: (?context :: context, LoggingProvider context) => SymbolType -> IO [Symbol]
 downloadSymbols = fetchSymbols

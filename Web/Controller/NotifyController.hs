@@ -10,14 +10,15 @@ import           Network.Wai (responseStream)
 import           System.Timeout (timeout)
 import           IHP.Controller.Response (respondAndExit)
 import           Web.Prelude
-import           Web.Service.NotifyHub
+import           Web.Service.Infrastructure.NotifyHub
 import           Web.Types
 
 instance Controller NotifyController where
   action NotifyAction = do
     let clientId =
           fromMaybe "default" $
-            paramOrNothing @Text "clientId"
+            (getHeader "X-Client-Id" >>= (Just . TE.decodeUtf8))
+              <|> paramOrNothing @Text "clientId"
               <|> paramOrNothing @Text "client"
     let headers =
           [ (hContentType, "text/event-stream")

@@ -1,21 +1,18 @@
 module Web.View.DataView where
 
-import qualified Data.Map                      as M
 import           Data.Maybe
 import           Data.Text hiding (length)
 import           Web.Prelude
-import           Web.View.DebugHtml
 import           Web.Types
 
 data DataView = DataView
-  { typeSymbolsMap :: TypeSymbolsMap
-  , mbSelectedSymbol :: Maybe SelectedSymbol}
+  { mbSelectedSymbol :: Maybe SelectedSymbol}
 
 instance View DataView where
-  html DataView { typeSymbolsMap, mbSelectedSymbol } =
+  html DataView { mbSelectedSymbol } =
     [hsx|
       <div style="display: flex; align-items: center; gap: 12px;">
-        {forEach (M.keys typeSymbolsMap) symbolsOfType}
+        {forEach allSymbolTypes symbolsOfType}
       </div>
       <div style="display: flex; align-items: center; gap: 12px;">
         <form method="get" action={PageDataAction}>
@@ -30,7 +27,6 @@ instance View DataView where
           <input type="hidden" name="symbolType" />
           <input type="hidden" name="symbolCode" />
           <datalist id="symbol-list">
-            {forEach symbols renderSymbolOption}
           </datalist>
           <button type="submit">Select</button>
         </form>
@@ -40,15 +36,12 @@ instance View DataView where
     where
       renderSelected (SelectedSymbol st code) =
         [hsx|<div class="mt-3">Selected: {show st} {code}</div>|]
+      allSymbolTypes :: [SymbolType]
+      allSymbolTypes = [minBound .. maxBound]
       symbolsOfType :: SymbolType -> Html
       symbolsOfType symbolType =
-        let symbols = typeSymbolsMap M.! symbolType
-        in  [hsx|
-              <span data-frp-symbol-count data-symbol-type={inputValue symbolType} data-placeholder="...">
-                {show symbolType}: {length symbols}
-              </span>
-            |]
-      symbols = Web.Prelude.concat $ M.elems typeSymbolsMap
-      renderSymbolOption :: Symbol -> Html
-      renderSymbolOption symbol = 
-        [hsx| <option value={inputValue (symbol.symbolType :: SymbolType) <> "|" <> symbol.code}>{symbol.name}</option> |]
+        [hsx|
+          <span data-frp-symbol-count data-symbol-type={inputValue symbolType} data-placeholder="...">
+            {show symbolType}: 0
+          </span>
+        |]

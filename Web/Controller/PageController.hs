@@ -6,13 +6,12 @@ import qualified Data.Map as M
 import           Data.Maybe
 import qualified Data.Text as T
 import           Web.Prelude
-import           Web.Repository.SymbolRepository
 import           Web.Types
+import           Web.View.BacktestView
 import           Web.View.DataView
-import qualified Web.View.Backtest.Index as BacktestView
-import qualified Web.View.Note.Index as NoteView
-import qualified Web.View.Strategy.Index as StrategyView
+import           Web.View.NoteView
 import           Web.View.RuntimeView
+import           Web.View.StrategyView
 
 instance Controller PageController where
   action PageDataAction = do
@@ -20,13 +19,16 @@ instance Controller PageController where
     let mbSelectedSymbol = SelectedSymbol
           <$> paramOrNothing @SymbolType "symbolType"
           <*> paramOrNothing @Text "symbolCode"
-    typeSymbolsMap <- getTypeSymbolsMapFromDB
-    render DataView { typeSymbolsMap, mbSelectedSymbol }
+    render DataView { mbSelectedSymbol }
+
   action PageNoteAction = do
-    render NoteView.IndexView
+    render NoteView
+
   action PageStrategyAction = do
-    render StrategyView.IndexView
+    render StrategyView
+
   action PageBacktestAction = do
-    render BacktestView.IndexView
+    render BacktestView
+
   action PageRuntimeAction = do
     render RuntimeView

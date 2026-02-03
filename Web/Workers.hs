@@ -3,11 +3,9 @@ module Web.Workers
   ) where
 
 import Web.Prelude
-import Web.Job.UpdateSymbolJob
 import Web.Types
 
 instance Worker WebApplication where
     workers _ =
-      [ worker @UpdateSymbolJob
-      -- Generator Marker
+      [ -- Generator Marker
       ]

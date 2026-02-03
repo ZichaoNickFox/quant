@@ -7,6 +7,7 @@ import Data.Argonaut.Aeson.Options as Argonaut
 import Data.Argonaut.Decode.Class (class DecodeJson, class DecodeJsonField, decodeJson)
 import Data.Argonaut.Encode.Class (class EncodeJson, encodeJson)
 import Data.Generic.Rep (class Generic)
+import Data.Show.Generic (genericShow)
 import Data.Lens (Iso', Lens', Prism', lens, prism')
 import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Record (prop)
@@ -34,6 +35,8 @@ instance encodeJsonCandle :: EncodeJson Candle where
 instance decodeJsonCandle :: DecodeJson Candle where
   decodeJson = genericDecodeAeson Argonaut.defaultOptions
 derive instance genericCandle :: Generic Candle _
+instance showCandle :: Show Candle where
+  show = genericShow
 derive instance newtypeCandle :: Newtype Candle _
 
 --------------------------------------------------------------------------------
@@ -55,6 +58,8 @@ instance encodeJsonCandlesResponse :: EncodeJson CandlesResponse where
 instance decodeJsonCandlesResponse :: DecodeJson CandlesResponse where
   decodeJson = genericDecodeAeson Argonaut.defaultOptions
 derive instance genericCandlesResponse :: Generic CandlesResponse _
+instance showCandlesResponse :: Show CandlesResponse where
+  show = genericShow
 derive instance newtypeCandlesResponse :: Newtype CandlesResponse _
 
 --------------------------------------------------------------------------------

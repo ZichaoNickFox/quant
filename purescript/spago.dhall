@@ -2,7 +2,7 @@
    (purs + spago) available to build. Run:
    spago bundle-app --main Main --to static/ps-bundle.js
 -}
-{ sources = [ "src/**/*.purs", "test/**/*.purs" ]
+{ sources = [ "src/**/*.purs" ]
 , name = "quant-ps"
 , dependencies =
   [ "aff"
