@@ -10,6 +10,7 @@ import qualified Data.Aeson as A
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Proto.Symbols as Proto
+import           Proto.SseStatus (SseStatus)
 import           Web.Prelude
 import           Web.Repo.SymbolRepo (getSymbolsByTypeMap, upsertSymbols)
 import           Web.Fetcher.SymbolFetcher (downloadSymbols)
@@ -69,5 +70,5 @@ instance RespondPolicy SymbolsCtx where
       ( [ "symbols" A..= symbols
         ]
       )
-  respondSse _ success =
-    A.object [ "status" A..= (if success then ("success" :: Text) else "failed") ]
+  respondSse _ status =
+    A.object [ "status" A..= status ]

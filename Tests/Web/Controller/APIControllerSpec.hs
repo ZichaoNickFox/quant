@@ -1,9 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tests.Web.Controller.APIControllerSpec (tests) where
 
-import Prelude
-import Test.Hspec
-
+import Config (config)
 import qualified Data.Aeson as A
 import Data.Aeson.Key (Key)
 import qualified Data.Aeson.KeyMap as KM
@@ -12,7 +10,8 @@ import Data.Time (LocalTime (..), TimeOfDay (..), fromGregorian, getCurrentTime,
 import qualified Data.Vector as V
 import IHP.Hspec (withIHPApp)
 import IHP.Test.Mocking (callActionWithParams, responseBody, withContext)
-import Config (config)
+import Prelude
+import Test.Hspec
 import Web.Controller.APIController ()
 import Web.FrontController ()
 import Web.Prelude

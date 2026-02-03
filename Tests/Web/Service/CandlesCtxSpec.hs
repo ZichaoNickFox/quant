@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tests.Web.Service.CandlesCtxSpec (tests) where
 
-import Prelude
-import Test.Hspec
-
 import qualified Data.Aeson as A
 import qualified Proto.Candles as Proto
+import Proto.SseStatus (SseStatus (..))
+import Prelude
+import Test.Hspec
 import Web.Service.CandlesCtx (CandlesCtx (..))
 import Web.Service.Policy.RespondPolicy (respondHttp, respondSse)
 import Web.Types (SymbolType (..))
@@ -40,5 +40,5 @@ tests = do
             , toDt = read "2024-01-02 00:00:00"
             , clientId = "client-a"
             }
-      respondSse ctx True `shouldBe` A.object [ "status" A..= ("success" :: String) ]
-      respondSse ctx False `shouldBe` A.object [ "status" A..= ("failed" :: String) ]
+      respondSse ctx Success `shouldBe` A.object [ "status" A..= ("success" :: String) ]
+      respondSse ctx Failed `shouldBe` A.object [ "status" A..= ("failed" :: String) ]

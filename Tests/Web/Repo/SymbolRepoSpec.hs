@@ -1,15 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tests.Web.Repo.SymbolRepoSpec (tests) where
 
-import Prelude
-import Test.Hspec
-
-import Data.Time (LocalTime (..), TimeOfDay (..), fromGregorian)
+import Config (config)
 import qualified Data.Map as M
+import Data.Time (LocalTime (..), TimeOfDay (..), fromGregorian)
 import qualified Generated.ActualTypes as Actual
 import IHP.Hspec (withIHPApp)
 import IHP.Test.Mocking (withContext)
-import Config (config)
+import Prelude
+import Test.Hspec
 import Web.FrontController ()
 import Web.Prelude
 import Web.Repo.SymbolRepo (clampCandleWindow, getSymbolsByTypeMap, upsertSymbols)

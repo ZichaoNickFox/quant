@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tests.Web.Service.SymbolsCtxSpec (tests) where
 
+import qualified Data.Aeson as A
+import Proto.SseStatus (SseStatus (..))
+import qualified Proto.Symbols as Proto
 import Prelude
 import Test.Hspec
-
-import qualified Data.Aeson as A
-import qualified Proto.Symbols as Proto
 import Web.Service.Policy.RespondPolicy (respondHttp, respondSse)
 import Web.Service.Policy.TTLPolicy (ttlKey, ttlSeconds)
 import Web.Service.SymbolsCtx (SymbolsCtx (..))
@@ -21,8 +21,8 @@ tests = do
 
     it "respondSse success/failed" do
       let ctx = SymbolsCtx { clientId = "client-a" }
-      respondSse ctx True `shouldBe` A.object [ "status" A..= ("success" :: String) ]
-      respondSse ctx False `shouldBe` A.object [ "status" A..= ("failed" :: String) ]
+      respondSse ctx Success `shouldBe` A.object [ "status" A..= ("success" :: String) ]
+      respondSse ctx Failed `shouldBe` A.object [ "status" A..= ("failed" :: String) ]
 
   describe "SymbolsCtx TTLPolicy" do
     it "ttlKey and ttlSeconds" do

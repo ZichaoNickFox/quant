@@ -1,13 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tests.Web.Service.Process.TTLProcessSpec (tests) where
 
-import Prelude
-import Test.Hspec
-
+import Config (config)
 import Data.Time (getCurrentTime, getCurrentTimeZone, utcToLocalTime)
 import IHP.Hspec (withIHPApp)
 import IHP.Test.Mocking (withContext)
-import Config (config)
+import Prelude
+import Test.Hspec
 import Web.FrontController ()
 import Web.Prelude
 import Web.Service.Process.TTLProcess (needTTL, upsertTTL)

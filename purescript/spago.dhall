@@ -29,6 +29,7 @@
   , "refs"
   , "spec"
   , "spec-node"
+  , "strings"
   , "tuples"
   , "web-socket"
   , "web-dom"

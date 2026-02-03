@@ -7,6 +7,9 @@ if [[ "${UPDATE_FLAKE:-}" == "1" ]]; then
   nix flake update
 fi
 
+## generate proto/*.purs
+direnv exec . runghc proto/Purescript-Bridge.hs
+
 # purescript tests
 direnv exec . bash -lc 'cd purescript && spago test --main Test.Main'
 

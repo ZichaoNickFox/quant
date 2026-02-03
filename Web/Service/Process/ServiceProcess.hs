@@ -13,12 +13,13 @@ import           Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import qualified Data.Map as M
 import           Data.Typeable (TypeRep, Typeable, typeRep)
 import           System.IO.Unsafe (unsafePerformIO)
-import           Web.Prelude
+import           Web.Prelude hiding (Success)
 import           Web.Service.Infrastructure.NotifyHub (publishToClient)
 import           Web.Service.Policy.CoveragePolicy (CoveragePolicy(..))
 import           Web.Service.Policy.FetchPolicy (FetchPolicy(..))
 import           Web.Service.Policy.RepoPolicy (RepoPolicy(..))
 import           Web.Service.Policy.RespondPolicy (RespondPolicy(..))
+import           Proto.SseStatus (SseStatus (..))
 
 data ActiveState ctx = ActiveState
   { activeRequests :: TVar [ctx]
@@ -58,7 +59,7 @@ beginServiceProcess ctx = do
         else modifyTVar' (activeRequests st) (ctx :) >> pure True
     if shouldFetch
       then void (forkIO (runFetch st ctx))
-      else publishToClient (get #clientId ctx) (LBS.toStrict (A.encode (respondSse ctx False)))
+      else publishToClient (get #clientId ctx) (LBS.toStrict (A.encode (respondSse ctx Duplicated)))
   payload <- readFromRepo ctx
   pure (respondHttp ctx payload)
 
@@ -72,8 +73,8 @@ runFetch st ctx = do
     fetchRes <- fetchTask ctx
     upsertFromFetch ctx fetchRes
     ) :: IO (Either SomeException ())
-  let success = case result of
-        Right _ -> True
-        Left _ -> False
-  publishToClient (get #clientId ctx) (LBS.toStrict (A.encode (respondSse ctx success)))
+  let status = case result of
+        Right _ -> Success
+        Left _ -> Failed
+  publishToClient (get #clientId ctx) (LBS.toStrict (A.encode (respondSse ctx status)))
   atomically $ modifyTVar' (activeRequests st) (filter (/= ctx))

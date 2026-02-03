@@ -1,10 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tests.Web.Service.CoveragePolicySpec (tests) where
 
+import Data.Time (LocalTime (..), TimeOfDay (..), fromGregorian)
 import Prelude
 import Test.Hspec
-
-import Data.Time (LocalTime (..), TimeOfDay (..), fromGregorian)
 import Web.Service.CandlesCtx (CandlesCtx (..))
 import Web.Service.Policy.CoveragePolicy (coveredByRequest)
 import Web.Service.SymbolsCtx (SymbolsCtx (..))

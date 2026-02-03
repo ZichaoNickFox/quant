@@ -1,13 +1,12 @@
 module Test.FRP.RequesterSpec (tests) where
 
-import Prelude
-
 import Data.Either (Either(..))
 import Effect (Effect)
 import Effect.Aff (Aff, makeAff, nonCanceler)
 import Effect.Class (liftEffect)
 import FRP.Event (Event, subscribe)
 import FRP.Requester (createRequester)
+import Prelude
 import Test.Spec (Spec, it)
 import Test.Spec.Assertions (shouldEqual)
 

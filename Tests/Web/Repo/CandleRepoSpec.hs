@@ -1,13 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tests.Web.Repo.CandleRepoSpec (tests) where
 
-import Prelude
-import Test.Hspec
-
+import Config (config)
 import Data.Time (LocalTime (..), TimeOfDay (..), fromGregorian)
 import IHP.Hspec (withIHPApp)
 import IHP.Test.Mocking (withContext)
-import Config (config)
+import Prelude
+import Test.Hspec
 import Web.FrontController ()
 import Web.Prelude
 import Web.Repo.CandleRepo (getCandlesWindow, hasCoverage, upsertCandles)

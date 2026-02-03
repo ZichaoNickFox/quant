@@ -10,6 +10,7 @@ import           Data.Time (LocalTime, defaultTimeLocale, formatTime)
 import           Data.Typeable (Typeable)
 import qualified Data.Aeson as A
 import qualified Proto.Candles as Proto
+import           Proto.SseStatus (SseStatus)
 import           Web.Prelude
 import           Web.Fetcher.CandleFetcher (CandleRange(..), getCandles)
 import           Web.Repo.CandleRepo (getCandlesWindow, hasCoverage, upsertCandles)
@@ -97,5 +98,5 @@ instance RespondPolicy CandlesCtx where
         , "data" A..= pts
         ]
       )
-  respondSse _ success =
-    A.object [ "status" A..= (if success then ("success" :: Text) else "failed") ]
+  respondSse _ status =
+    A.object [ "status" A..= status ]

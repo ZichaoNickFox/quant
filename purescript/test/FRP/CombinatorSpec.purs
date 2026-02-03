@@ -1,13 +1,12 @@
 module Test.FRP.CombinatorSpec (tests) where
 
-import Prelude
-
 import Data.Array as Array
 import Data.Tuple (Tuple(..))
 import Effect.Class (liftEffect)
 import Effect.Ref as Ref
 import FRP as FRP
 import FRP.Event (create, subscribe)
+import Prelude
 import Test.Spec (Spec, it)
 import Test.Spec.Assertions (shouldEqual)
 
