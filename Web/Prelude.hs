@@ -4,6 +4,7 @@ module Web.Prelude
   ( logController
   , logDebug
   , logError
+  , logFetch
   , logInfo
   , logWarn
   , requestUrl
@@ -71,6 +72,9 @@ logWarn = Log.warn
 
 logController :: (?context :: context, LoggingProvider context) => LogLevel -> Text -> IO ()
 logController level log = logInfo $ "\\ESC[36m" <> log <> "\\ESC[0m"
+
+logFetch :: (?context :: context, LoggingProvider context) => Text -> IO ()
+logFetch log = logInfo $ "\\ESC[32m" <> log <> "\\ESC[0m"
 
 requestUrl :: (?context :: ControllerContext ,?modelContext :: ModelContext ,?theAction :: controller ) => Text
 requestUrl = "rawPath=" <> tshow (rawPathInfo request) <> " " <> "rawQuery=" <> tshow (rawQueryString request)

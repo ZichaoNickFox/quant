@@ -14,7 +14,7 @@ import qualified Proto.Symbols as Proto
 import           Proto.SseStatus (SseStatus(..))
 import           Web.Prelude hiding (Success)
 import           Web.Repo.SymbolRepo (getSymbolsByTypeMap, upsertSymbols)
-import           Web.Fetcher.SymbolFetcher (fetchSymbols)
+import           Web.Fetcher.FetchSymbols (fetchSymbols)
 import           Web.Service.Policy.CoveragePolicy
 import           Web.Service.Policy.RepoPolicy
 import           Web.Service.Policy.NotifyPolicy

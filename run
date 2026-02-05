@@ -3,39 +3,24 @@ set -euo pipefail
 
 # env
 direnv allow .
+if [[ -z "${DEVENV_IN_DIRENV_SHELL:-}" ]]; then
+  exec direnv exec . "$0" "$@"
+fi
 if [[ "${UPDATE_FLAKE:-}" == "1" ]]; then
   nix flake update
 fi
 
 # purescript
+## Generate Types and Enums
+make build/Generated/Types.hs
+make build/Generated/Enums.hs
 ## generate proto/*.purs
-direnv exec . runghc proto/Purescript-Bridge.hs
+runghc proto/Purescript-Bridge.hs
 ## generate static/ps-bundle.js
-direnv exec . bash -lc 'cd purescript && spago bundle-app --main Main --to ../static/ps-bundle.js --purs-args "--output output"'
+bash -lc 'cd purescript && spago bundle-app --main Main --to ../static/ps-bundle.js --purs-args "--output output"'
 
-# smoke test: symbols fetcher
-direnv exec . bash -lc '
-  PYTHON_BIN=".venv/bin/python"
-  if [ ! -x "$PYTHON_BIN" ]; then PYTHON_BIN="python3"; fi
-  PYTHON_BIN="$PYTHON_BIN" "$PYTHON_BIN" - <<'"'"'PY'"'"'
-import json, os, subprocess, sys
-
-python_bin = os.environ["PYTHON_BIN"]
-cmd = [python_bin, "Web/Fetcher/symbol_fetcher.py", json.dumps("stock")]
-res = subprocess.run(cmd, capture_output=True, text=True)
-if res.returncode != 0:
-    sys.stderr.write(res.stderr or res.stdout or "symbol_fetcher failed\n")
-    sys.exit(res.returncode)
-try:
-    data = json.loads(res.stdout)
-except Exception as exc:
-    sys.stderr.write(f"invalid JSON: {exc}\n")
-    sys.exit(1)
-if not isinstance(data, list):
-    sys.stderr.write("unexpected response: not a list\n")
-    sys.exit(1)
-PY
-'
+# smoke test
+./smoke
 
 # run
 devenv up

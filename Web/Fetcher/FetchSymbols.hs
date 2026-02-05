@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Web.Fetcher.SymbolFetcher
+module Web.Fetcher.FetchSymbols
   ( fetchSymbols
   ) where
 
@@ -59,11 +59,11 @@ instance ToRow Symbol where
 
 fetchSymbols :: (?context :: context, LoggingProvider context) => SymbolType -> IO [Symbol]
 fetchSymbols symbolType = do
-  logInfo $ ("[fetchSymbols] begin | parameter : " <> tshow symbolType :: Text)
-  result <- runPython 10000 "Web/Fetcher/symbol_fetcher.py" symbolType False :: IO (Either PythonError [Symbol])
+  logFetch $ ("[fetchSymbols] begin | parameter : " <> tshow symbolType :: Text)
+  result <- runPython 10000 "Web/Fetcher/fetch_symbols.py" symbolType False :: IO (Either PythonError [Symbol])
   case result of
     Right symbols -> do
-      logInfo $ "[fetchSymbols] end | nums - " <> tshow (length symbols)
+      logFetch $ "[fetchSymbols] end | nums - " <> tshow (length symbols)
       return symbols
     Left err -> do
       logError $ "[fetchSymbols] python error : " <> renderPythonError err

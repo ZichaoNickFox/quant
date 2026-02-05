@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# env
+direnv allow .
+if [[ -z "${DEVENV_IN_DIRENV_SHELL:-}" ]]; then
+  exec direnv exec . "$0" "$@"
+fi
+
+runghc $(make print-ghc-extensions) -i. -ibuild -iConfig Smokes/Main.hs

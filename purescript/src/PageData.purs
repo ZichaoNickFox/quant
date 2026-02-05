@@ -1,4 +1,4 @@
-module Data (combineDataFRP) where
+module PageData (initFRP) where
 
 import Prelude
 
@@ -49,8 +49,8 @@ renderSymbolList htmlDoc symbols = do
       appendChild (toNode opt) (toNode listEl)
 
 -- FRP wiring: build refresh events -> responses behavior -> render
-combineDataFRP :: FRP.Event Unit -> FRP.Event SseStatus -> Effect Unit
-combineDataFRP initEvent notifyEvent = do
+initFRP :: FRP.Event Unit -> FRP.Event SseStatus -> Effect Unit
+initFRP initEvent notifyEvent = do
   win <- window
   doc <- document win
   nodes <- querySelectorAll (QuerySelector "[data-frp-symbol-count]") (HTMLDoc.toParentNode doc) >>= toArray

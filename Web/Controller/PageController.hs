@@ -12,6 +12,8 @@ import           Web.View.DataView
 import           Web.View.NoteView
 import           Web.View.RuntimeView
 import           Web.View.StrategyView
+import           Web.Repo.CellRepo (loadCells)
+import           Web.Repo.PageRepo (getOrCreateNote, getOrCreateStrategy)
 
 instance Controller PageController where
   action PageDataAction = do
@@ -22,10 +24,16 @@ instance Controller PageController where
     render DataView { mbSelectedSymbol }
 
   action PageNoteAction = do
-    render NoteView
+    note <- getOrCreateNote
+    let (Id noteUuid) = get #id note
+    noteCells <- loadCells CellOwnerTypeNote noteUuid
+    render NoteView { noteId = get #id note, noteCells }
 
   action PageStrategyAction = do
-    render StrategyView
+    strategy <- getOrCreateStrategy
+    let (Id strategyUuid) = get #id strategy
+    strategyCells <- loadCells CellOwnerTypeStrategy strategyUuid
+    render StrategyView { strategyId = get #id strategy, strategyCells }
 
   action PageBacktestAction = do
     render BacktestView

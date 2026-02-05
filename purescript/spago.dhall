@@ -22,6 +22,7 @@
   , "exceptions"
   , "filterable"
   , "foldable-traversable"
+  , "form-urlencoded"
   , "foreign-object"
   , "maybe"
   , "newtype"

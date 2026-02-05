@@ -5,31 +5,16 @@ import json
 import sys
 import os
 
-# 重新设置列名
-def refactor_df_column(df, symbol_column_name, name_column_name, symbol_suffix):
-  if symbol_suffix == "":
-    return pd.DataFrame(
-      { "symbol_code" : (df[symbol_column_name].astype(str))
-      , "symbol_name" : df[name_column_name].astype(str)
-      }
-    )
-  else:
-    return pd.DataFrame(
-      { "symbol_code" : (df[symbol_column_name].astype(str) + "." + symbol_suffix)
-      , "symbol_name" : df[name_column_name].astype(str)
-      }
-    )
-
 # yyyymmdd_to_iso
 def yyyymmdd_to_iso(string):
     """
     Convert 'YYYYMMDD' -> 'YYYY-MM-DDT00:00:00'
     Return None for None / NaN / empty
     """
-    if string is None:
+    if string is None or (isinstance(string, float) and pd.isna(string)) or string == "":
       return None
     else:
-      return datetime.strptime(string, "%Y%m%d").strftime("%Y-%m-%dT%H:%M:%S")
+      return datetime.strptime(str(string), "%Y%m%d").strftime("%Y-%m-%dT%H:%M:%S")
 
 # all stock https://www.tushare.pro/document/2?doc_id=25
 def stock_basic():
@@ -59,6 +44,31 @@ def etf_basic():
              for row in df.itertuples(index=False)]
   return symbols
 
+# All futures https://tushare.pro/document/2?doc_id=133
+def future_basic():
+  pro = ts.pro_api()
+  df = pd.DataFrame(pro.fut_basic(exchange='', fut_type='', fields=['ts_code', 'name', 'list_date', 'delist_date']))
+  symbols = [{"code" : row[0], "name" : row[1], "symbol_type" : "future", "list_date" : yyyymmdd_to_iso(row[2]), "delist_date" : yyyymmdd_to_iso(row[3])}
+             for row in df.itertuples(index=False)]
+  return symbols
+
+# All options https://tushare.pro/document/2?doc_id=163
+def option_basic():
+  pro = ts.pro_api()
+  df = pd.DataFrame(pro.opt_basic(exchange='', fields=['ts_code', 'name', 'list_date', 'delist_date']))
+  symbols = [{"code" : row[0], "name" : row[1], "symbol_type" : "option", "list_date" : yyyymmdd_to_iso(row[2]), "delist_date" : yyyymmdd_to_iso(row[3])}
+             for row in df.itertuples(index=False)]
+  return symbols
+
+# All funds https://tushare.pro/document/2?doc_id=19
+def fund_basic():
+  pro = ts.pro_api()
+  df = pd.DataFrame(pro.fund_basic(market='', fields=['ts_code', 'name', 'list_date', 'delist_date']))
+  df = df[df['list_date'].notna()]
+  df = df[df['list_date'].astype(str).str.match(r'^\d{8}$')]
+  symbols = [{"code" : row[0], "name" : row[1], "symbol_type" : "fund", "list_date" : yyyymmdd_to_iso(row[2]), "delist_date" : yyyymmdd_to_iso(row[3])}
+             for row in df.itertuples(index=False)]
+  return symbols
 
 # 宽基指数列表
 def get_broad_based_index_list():
@@ -72,69 +82,6 @@ def get_broad_based_index_list():
   df = pd.DataFrame(data, columns=["symbol_code", "symbol_name"])
   return df
 
-
-def test(symbol_type):
-  if symbol_type == "ShangHai":
-    return \
-      [
-        [ "600000.XSHG"
-        , 0
-        , "浦发银行"
-        ],
-        [ "600004.XSHG"
-        , 0
-        , "白云机场"
-        ]
-      ]
-  elif symbol_type == "ShenZhen":
-    return \
-      [
-        [ "000001.XSHE"
-        , 0
-        , "平安银行"
-        ],
-        [ "000002.XSHE"
-        , 0
-        , "万科A"
-        ]
-      ]
-  elif symbol_type == "BroadBasedIndex":
-    return \
-      [
-        [ "000001.XSHG"
-        , 1
-        , "上证指数"
-        ],
-        [ "399001.XSHE"
-        , 1
-        , "深圳成指"
-        ]
-      ]
-  elif symbol_type == "IndestryIndex":
-    return \
-      [
-        [ "BK0732"
-        , 1
-        , "贵金属"
-        ],
-        [ "BK0437"
-        , 1
-        , "煤炭行业"
-        ]
-      ]
-  elif symbol_type == "ConceptIndex":
-    return \
-      [
-        [ "BK1051"
-        , 1
-        , "昨日连板_含一字"
-        ],
-        [ "BK0862"
-        , 1
-        , "超级真菌"
-        ]
-      ]
-
 def get_symbol(symbol_type):
   if symbol_type == "stock":              # stock
     return stock_basic()
@@ -142,6 +89,12 @@ def get_symbol(symbol_type):
     return index_basic()
   elif symbol_type == "etf":              # etf
     return etf_basic()
+  elif symbol_type == "future":           # future
+    return future_basic()
+  elif symbol_type == "option":           # option
+    return option_basic()
+  elif symbol_type == "fund":             # fund
+    return fund_basic()
   elif symbol_type == "ShangHai":         # 上证股票
     return get_shanghai_stock_list()
   elif symbol_type == "ShenZhen":         # 深证股票
@@ -154,6 +107,7 @@ def get_symbol(symbol_type):
     return get_concept_index_list()
   else:
     print("[get_symbol.py]", "error symbol_type : " + repr(symbol_type), file=sys.stderr)
+    return []
 
 if __name__ == "__main__":
   token = os.environ.get("TUSHARE_TOKEN")
@@ -164,7 +118,7 @@ if __name__ == "__main__":
   if len(sys.argv) > 1:
     symbol_type = json.loads(sys.argv[1])
   else:
-    assert "[get_symbols.py] parameter error"
+    assert "[fetch_symbols.py] parameter error"
   symbols = get_symbol(symbol_type)
   json_result = json.dumps(symbols, ensure_ascii = False)
   print(json_result)

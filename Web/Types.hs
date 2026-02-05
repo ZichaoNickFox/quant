@@ -26,12 +26,28 @@ data PageController
   | PageBacktestAction
   | PageRuntimeAction
   deriving (Eq, Show, Data)
+data CellController
+  = CellCreateAction
+  | CellCreateAtAction
+  | CellUpdateAction
+  | CellMoveAction
+  | CellDeleteAction
+  | CellReadAction
+  deriving (Eq, Show, Data)
+data TreeController
+  = TreeCreateAction
+  | TreeUpdateAction
+  | TreeDeleteAction
+  | TreeReadAction
+  deriving (Eq, Show, Data)
 data StaticController = StaticAction deriving (Eq, Show, Data)
 data NotifyController = NotifyAction deriving (Eq, Show, Data)
 
 -- Route
 instance AutoRoute APIController
 instance AutoRoute PageController
+instance AutoRoute CellController
+instance AutoRoute TreeController
 instance AutoRoute StaticController
 instance CanRoute NotifyController where
   parseRoute' = string "/sse/notify" <* endOfInput >> pure NotifyAction

@@ -36,7 +36,7 @@ runPython :: forall context result parameter.
           => Int -> Text.Text -> parameter -> Bool -> IO (Either PythonError result)
 runPython timeoutMs scriptFullpath parameter printPythonLog = do
   let parameterJSON = LBS.unpack (encode parameter) :: String
-  logInfo $ "[Python] Call python Parameter Json : " <> Text.pack parameterJSON
+  logFetch $ "[Python] Call python Parameter Json : " <> Text.pack parameterJSON
 
   pythonCmd <- pickPythonCmd
   let timeoutUs = max 1 timeoutMs * 1000
@@ -90,7 +90,7 @@ runPython timeoutMs scriptFullpath parameter printPythonLog = do
           lazyByteString = LBS.fromStrict byteString
       case eitherDecode lazyByteString of
         Right result -> do
-          logInfo $ "[Python] Success" <> bool "" (" : " <> Text.pack resultJSON) printPythonLog
+          logFetch $ "[Python] Success" <> bool "" (" : " <> Text.pack resultJSON) printPythonLog
           return (Right result)
         Left jsonErrorString -> do
           let err = PythonJsonDecodeError (Text.pack jsonErrorString)

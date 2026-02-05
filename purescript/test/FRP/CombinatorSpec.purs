@@ -37,3 +37,34 @@ tests = do
     liftEffect $ push unit
     xs <- liftEffect $ Ref.read outRef
     xs `shouldEqual` [ unit ]
+
+  it "withLatestFrom emits only on source stream" do
+    { event: source, push: pushSource } <- liftEffect create
+    { event: other, push: pushOther } <- liftEffect create
+    let combined = FRP.withLatestFrom source other
+    outRef <- liftEffect $ Ref.new ([] :: Array (Tuple Unit Unit))
+    _ <- liftEffect $ subscribe combined \u -> Ref.modify_ (\xs -> Array.snoc xs u) outRef
+
+    liftEffect $ pushSource unit
+    xs1 <- liftEffect $ Ref.read outRef
+    xs1 `shouldEqual` []
+
+    liftEffect $ pushOther unit
+    xs2 <- liftEffect $ Ref.read outRef
+    xs2 `shouldEqual` []
+
+    liftEffect $ pushSource unit
+    xs3 <- liftEffect $ Ref.read outRef
+    xs3 `shouldEqual` [ Tuple unit unit ]
+
+  it "pairwise emits previous/current pairs" do
+    { event: e, push } <- liftEffect create
+    let paired = FRP.pairwise e
+    outRef <- liftEffect $ Ref.new ([] :: Array (Tuple Int Int))
+    _ <- liftEffect $ subscribe paired \u -> Ref.modify_ (\xs -> Array.snoc xs u) outRef
+
+    liftEffect $ push 1
+    liftEffect $ push 2
+    liftEffect $ push 3
+    xs <- liftEffect $ Ref.read outRef
+    xs `shouldEqual` [ Tuple 1 2, Tuple 2 3 ]

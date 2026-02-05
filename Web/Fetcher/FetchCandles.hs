@@ -1,4 +1,4 @@
-module Web.Fetcher.CandleFetcher
+module Web.Fetcher.FetchCandles
   ( CandleRange (..)
   , fetchCandles
   ) where
@@ -10,9 +10,9 @@ import qualified Data.Text                      as Text
 import           Data.Time
 import           Data.UUID                      (UUID)
 import           GHC.Generics
-import           Generated.Types
 import           Web.Fetcher.Python
 import           Web.Prelude
+import           Web.Types
 
 -- | Parameters sent to the Python downloader.
 --   { "symbol_id": "...", "symbol_code": "...", "timeframe": 0-7, "from_datetime": "...", "to_datetime": "..." }
@@ -60,11 +60,11 @@ fetchCandles
   :: (?context :: context, LoggingProvider context)
   => CandleRange -> IO [Candle]
 fetchCandles candleRange = do
-  logInfo $ ("[fetchCandles] begin | parameter : " <> tshow candleRange :: Text)
-  result <- runPython 10000 "Web/Fetcher/candle_fetcher.py" candleRange False :: IO (Either PythonError [Candle])
+  logFetch $ ("[fetchCandles] begin | parameter : " <> tshow candleRange :: Text)
+  result <- runPython 10000 "Web/Fetcher/fetch_candles.py" candleRange False :: IO (Either PythonError [Candle])
   case result of
     Right candles -> do
-      logInfo $ "[fetchCandles] end | nums - " <> tshow (length candles)
+      logFetch $ "[fetchCandles] end | nums - " <> tshow (length candles)
       pure candles
     Left err -> do
       logError $ "[fetchCandles] python error : " <> renderPythonError err

@@ -2,7 +2,6 @@ module Main where
 
 import Prelude
 
-import Data (combineDataFRP)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
@@ -10,7 +9,11 @@ import Data.Either (Either(..))
 import Effect (Effect)
 import FFI.SSE (attachEventSource)
 import FRP as FRP
+import PageData as PageData
+import PageNote as PageNote
+import PageStrategy as PageStrategy
 import Proto.SseStatus (SseStatus(..), sseStatusFromString)
+import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.Event.EventTarget (addEventListener, eventListener)
 import Web.HTML (window)
 import Web.HTML.Event.EventTypes as HE
@@ -26,7 +29,15 @@ main = do
   -- subscribe
   _ <- FRP.subscribeWithLog domEvent "[dom]" \_ -> do
     notifyEvent <- bindNotifyEvent
-    combineDataFRP beginEvent notifyEvent
+    PageData.initFRP beginEvent notifyEvent
+    win <- window
+    doc <- document win
+    hasNoteTree <- hasSelector doc "[data-tree-root][data-owner-type='note']"
+    when hasNoteTree do
+      PageNote.initFRP beginEvent notifyEvent
+    hasStrategyTree <- hasSelector doc "[data-tree-root][data-owner-type='strategy']"
+    when hasStrategyTree do
+      PageStrategy.initFRP beginEvent notifyEvent
     FRP.pushWithLog beginPush "[begin]" unit
     pure unit
   _ <- FRP.subscribeWithLog beginEvent "[begin]" \_ -> do
@@ -60,3 +71,10 @@ bindNotifyEvent = do
               Nothing -> pure unit
           Left _ -> pure unit
   pure event
+
+hasSelector :: HTMLDoc.HTMLDocument -> String -> Effect Boolean
+hasSelector doc selector = do
+  mNode <- querySelector (QuerySelector selector) (HTMLDoc.toParentNode doc)
+  pure case mNode of
+    Just _ -> true
+    Nothing -> false

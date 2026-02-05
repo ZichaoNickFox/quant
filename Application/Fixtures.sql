@@ -1,0 +1,1 @@
+-- Seed data only. Keep schema constraints in Application/Schema.sql.

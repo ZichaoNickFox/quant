@@ -13,7 +13,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Proto.Candles as Proto
 import           Proto.SseStatus (SseStatus(..))
 import           Web.Prelude hiding (Success)
-import           Web.Fetcher.CandleFetcher (CandleRange(..), fetchCandles)
+import           Web.Fetcher.FetchCandles (CandleRange(..), fetchCandles)
 import           Web.Repo.CandleRepo (getCandlesWindow, hasCoverage, upsertCandles)
 import           Web.Repo.SymbolRepo (clampCandleWindow, getSymbolByCodeType)
 import           Web.Service.Policy.CoveragePolicy

@@ -2,6 +2,8 @@ module Web.FrontController where
 
 import Web.Controller.APIController
 import Web.Controller.PageController
+import Web.Controller.CellController
+import Web.Controller.TreeController
 import Web.Controller.NotifyController
 import Web.Prelude
 import Web.Types
@@ -12,6 +14,8 @@ instance FrontController WebApplication where
     [ startPage PageStrategyAction
     , parseRoute @APIController
     , parseRoute @PageController
+    , parseRoute @CellController
+    , parseRoute @TreeController
     , parseRoute @NotifyController
     ]
 

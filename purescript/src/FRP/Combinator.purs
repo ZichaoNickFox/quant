@@ -4,6 +4,8 @@ module FRP.Combinator
   , filter
   , scan
   , combineLatest2
+  , withLatestFrom
+  , pairwise
   , take1
   ) where
 
@@ -56,3 +58,29 @@ combineLatest2 a b =
   in
     filterMap identity $
       scan step { aVal: Nothing, bVal: Nothing } toSignal
+
+-- RxJS-style: emit only when source emits and the other stream has produced at least once.
+withLatestFrom :: forall a b. Event a -> Event b -> Event (Tuple a b)
+withLatestFrom source other =
+  let
+    toSignal = merge (Left <$> source) (Right <$> other)
+    step sig state =
+      case sig of
+        Right b -> Tuple { latest: Just b } Nothing
+        Left a -> Tuple state (Tuple a <$> state.latest)
+  in
+    filterMap identity $
+      scan step { latest: Nothing } toSignal
+
+-- RxJS-style: emit previous/current pair after the second value.
+pairwise :: forall a. Event a -> Event (Tuple a a)
+pairwise e =
+  let
+    step a prev =
+      let out = case prev of
+            Just p -> Just (Tuple p a)
+            Nothing -> Nothing
+      in Tuple (Just a) out
+  in
+    filterMap identity $
+      scan step Nothing e
