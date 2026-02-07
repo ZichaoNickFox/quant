@@ -11,7 +11,6 @@ instance View StrategyView where
   html StrategyView { strategyId, strategyCells } = [hsx|
     <div class="row">
       <div class="col-3 border-end">
-        <h5>策略树</h5>
         <div
           data-tree-root="1"
           data-owner-type="strategy"
@@ -37,18 +36,18 @@ instance View StrategyView where
           <div class="card-body">
             <div data-cell-update-card="1" data-owner-type="strategy">
               <input type="hidden" name="cellId" value={get #id cell} />
-              <select name="cellType" class="form-select form-select-sm w-auto mb-2">
-                {forEach [Raw, Image, Backtest] (cellTypeOption (get #cellType cell))}
-              </select>
-              <textarea class="form-control" name="content" rows="4">{fromMaybe "" (get #content cell)}</textarea>
-              <div class="d-flex gap-2 flex-wrap mt-2">
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-save-button="1">Save</button>
-                <button class="btn btn-sm btn-outline-danger" type="button" data-cell-delete-button="1">Delete</button>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-add-above="1">Insert Above</button>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-add-below="1">Insert Below</button>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-move-up="1">Move Up</button>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-move-down="1">Move Down</button>
+              <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
+                <select name="cellType" class="form-select form-select-sm w-auto" style="height: 32px;">
+                  {forEach [Raw, Image, Backtest, Chart] (cellTypeOption (get #cellType cell))}
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-save-button="1" style="height: 32px;">Save</button>
+                <button class="btn btn-sm btn-outline-danger" type="button" data-cell-delete-button="1" style="height: 32px;">Delete</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-add-above="1" style="height: 32px;">Insert Above</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-add-below="1" style="height: 32px;">Insert Below</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-move-up="1" style="height: 32px;">Move Up</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-cell-move-down="1" style="height: 32px;">Move Down</button>
               </div>
+              <textarea class="form-control" name="content" rows="4">{fromMaybe "" (get #content cell)}</textarea>
             </div>
           </div>
         </div>

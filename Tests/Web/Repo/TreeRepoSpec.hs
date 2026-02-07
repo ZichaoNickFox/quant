@@ -20,15 +20,15 @@ tests = aroundAll (withIHPApp WebApplication config) do
     it "createTreeNode assigns node_order by sibling group and isolates owner scope" $ withContext do
       ownerA <- mkUuid "00000000-0000-0000-0000-000000001121"
       ownerB <- mkUuid "00000000-0000-0000-0000-000000001122"
-      rootA <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File "root-a" Nothing
-      rootB <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File "root-b" Nothing
+      rootA <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File Nothing
+      rootB <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File Nothing
       let (Id rootAUuid) = get #id rootA
           (Id rootBUuid) = get #id rootB
-      _ <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File "child-a-1" (Just rootAUuid)
-      _ <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File "child-a-2" (Just rootAUuid)
-      _ <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File "child-b-1" (Just rootBUuid)
-      _ <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerB Types.File "other-owner-root" Nothing
-      _ <- TreeRepo.createTreeNode TreeOwnerTypeStrategy ownerA Types.File "strategy-root" Nothing
+      _ <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File (Just rootAUuid)
+      _ <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File (Just rootAUuid)
+      _ <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerA Types.File (Just rootBUuid)
+      _ <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerB Types.File Nothing
+      _ <- TreeRepo.createTreeNode TreeOwnerTypeStrategy ownerA Types.File Nothing
 
       rootsA <- query @Tree
         |> filterWhere (#ownerType, TreeOwnerTypeNote)
@@ -49,46 +49,45 @@ tests = aroundAll (withIHPApp WebApplication config) do
     it "loadTree filters by owner and returns nodes ordered by node_order" $ withContext do
       ownerA <- mkUuid "00000000-0000-0000-0000-000000001123"
       ownerB <- mkUuid "00000000-0000-0000-0000-000000001124"
-      _ <- newTree ownerA "n-3" Nothing 3
-      _ <- newTree ownerA "n-1" Nothing 1
-      _ <- newTree ownerA "n-2" Nothing 2
-      _ <- newTree ownerB "other-owner" Nothing 1
-      _ <- newTreeStrategy ownerA "other-type" Nothing 1
+      _ <- newTree ownerA Nothing 3
+      _ <- newTree ownerA Nothing 1
+      _ <- newTree ownerA Nothing 2
+      _ <- newTree ownerB Nothing 1
+      _ <- newTreeStrategy ownerA Nothing 1
 
       rows <- TreeRepo.loadTree TreeOwnerTypeNote ownerA
-      map (get #name) rows `shouldBe` ["n-1", "n-2", "n-3"]
+      map (get #nodeOrder) rows `shouldBe` [1, 2, 3]
 
     it "updateTreeNode applies fields and rejects invalid parent assignments" $ withContext do
       ownerId <- mkUuid "00000000-0000-0000-0000-000000001125"
-      root <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerId Types.File "root" Nothing
+      root <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerId Types.File Nothing
       let (Id rootId) = get #id root
-      child <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerId Types.File "child" (Just rootId)
+      child <- TreeRepo.createTreeNode TreeOwnerTypeNote ownerId Types.File (Just rootId)
       let (Id childId) = get #id child
 
       -- self parent should be rejected
-      TreeRepo.updateTreeNode (get #id root) Nothing (Just rootId) 1
+      TreeRepo.updateTreeNode (get #id root) (Just rootId) 1
       updatedRoot <- fetchOne (get #id root)
       get #parentTreeId updatedRoot `shouldBe` Nothing
 
       -- cycle parent should be rejected while child is still under root
-      TreeRepo.updateTreeNode (get #id root) Nothing (Just childId) 1
+      TreeRepo.updateTreeNode (get #id root) (Just childId) 1
       updatedRoot2 <- fetchOne (get #id root)
       get #parentTreeId updatedRoot2 `shouldBe` Nothing
 
       -- normal update should still work
-      TreeRepo.updateTreeNode (get #id child) (Just "child-renamed") Nothing 2
+      TreeRepo.updateTreeNode (get #id child) Nothing 2
       updated1 <- fetchOne (get #id child)
-      get #name updated1 `shouldBe` "child-renamed"
       get #parentTreeId updated1 `shouldBe` Nothing
       get #nodeOrder updated1 `shouldBe` 2
 
     it "deleteTreeNode removes subtree and note-owned cells under subtree ids" $ withContext do
       ownerId <- mkUuid "00000000-0000-0000-0000-000000001126"
-      root <- newTree ownerId "root-del" Nothing 1
+      root <- newTree ownerId Nothing 1
       let (Id rootId) = get #id root
-      child <- newTree ownerId "child-del" (Just rootId) 1
+      child <- newTree ownerId (Just rootId) 1
       let (Id childId) = get #id child
-      keep <- newTree ownerId "keep" Nothing 2
+      keep <- newTree ownerId Nothing 2
       let (Id keepId) = get #id keep
 
       _ <- newCell CellOwnerTypeNote rootId 1 "root-cell"
@@ -118,24 +117,22 @@ mkUuid :: Text -> IO UUID
 mkUuid t =
   pure (fromJust (UUID.fromText t))
 
-newTree :: (?modelContext :: ModelContext) => UUID -> Text -> Maybe UUID -> Int -> IO Tree
-newTree ownerId name parentTreeId nodeOrder =
+newTree :: (?modelContext :: ModelContext) => UUID -> Maybe UUID -> Int -> IO Tree
+newTree ownerId parentTreeId nodeOrder =
   newRecord @Tree
     |> set #ownerType TreeOwnerTypeNote
     |> set #ownerId ownerId
     |> set #nodeType Types.File
-    |> set #name name
     |> set #parentTreeId parentTreeId
     |> set #nodeOrder nodeOrder
     |> createRecord
 
-newTreeStrategy :: (?modelContext :: ModelContext) => UUID -> Text -> Maybe UUID -> Int -> IO Tree
-newTreeStrategy ownerId name parentTreeId nodeOrder =
+newTreeStrategy :: (?modelContext :: ModelContext) => UUID -> Maybe UUID -> Int -> IO Tree
+newTreeStrategy ownerId parentTreeId nodeOrder =
   newRecord @Tree
     |> set #ownerType TreeOwnerTypeStrategy
     |> set #ownerId ownerId
     |> set #nodeType Types.File
-    |> set #name name
     |> set #parentTreeId parentTreeId
     |> set #nodeOrder nodeOrder
     |> createRecord

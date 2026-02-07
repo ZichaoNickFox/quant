@@ -1,8 +1,8 @@
-module FRP.InputText
-  ( InputTextAction(..)
-  , InputTextOutput(..)
-  , deriveInputTextOutput
-  , createInputText
+module FRP.Component.Input
+  ( InputAction(..)
+  , InputOutput(..)
+  , deriveInputOutput
+  , createInput
   ) where
 
 import Prelude
@@ -13,28 +13,28 @@ import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import FRP.Event (Event, create, mapAccum, subscribe)
 
-data InputTextAction
+data InputAction
   = StartEdit String
   | ConfirmEdit String
 
-derive instance eqInputTextAction :: Eq InputTextAction
-instance showInputTextAction :: Show InputTextAction where
+derive instance eqInputAction :: Eq InputAction
+instance showInputAction :: Show InputAction where
   show = case _ of
     StartEdit v -> "(StartEdit " <> show v <> ")"
     ConfirmEdit v -> "(ConfirmEdit " <> show v <> ")"
 
-data InputTextOutput
+data InputOutput
   = StartedEditing String
   | ConfirmedEditing String
 
-derive instance eqInputTextOutput :: Eq InputTextOutput
-instance showInputTextOutput :: Show InputTextOutput where
+derive instance eqInputOutput :: Eq InputOutput
+instance showInputOutput :: Show InputOutput where
   show = case _ of
     StartedEditing v -> "(StartedEditing " <> show v <> ")"
     ConfirmedEditing v -> "(ConfirmedEditing " <> show v <> ")"
 
-deriveInputTextOutput :: Event InputTextAction -> String -> Event InputTextOutput
-deriveInputTextOutput actionEvent initialValue =
+deriveInputOutput :: Event InputAction -> String -> Event InputOutput
+deriveInputOutput actionEvent initialValue =
   let
     step action _ =
       case action of
@@ -43,18 +43,18 @@ deriveInputTextOutput actionEvent initialValue =
   in
     filterMap identity $ mapAccum step actionEvent initialValue
 
-createInputText
+createInput
   :: String
   -> Effect
-       { actionPush :: InputTextAction -> Effect Unit
+       { actionPush :: InputAction -> Effect Unit
        , startedEvent :: Event String
        , confirmedEvent :: Event String
        }
-createInputText initialValue = do
+createInput initialValue = do
   { event: actionEvent, push: actionPush } <- create
   { event: startedEvent, push: startedPush } <- create
   { event: confirmedEvent, push: confirmedPush } <- create
-  let outputEvent = deriveInputTextOutput actionEvent initialValue
+  let outputEvent = deriveInputOutput actionEvent initialValue
   _ <- subscribe outputEvent \out ->
     case out of
       StartedEditing v -> startedPush v

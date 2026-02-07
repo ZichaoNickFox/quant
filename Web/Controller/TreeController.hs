@@ -10,17 +10,15 @@ instance Controller TreeController where
     let ownerType = param @TreeOwnerType "ownerType"
         ownerId = param @UUID "ownerId"
         nodeType = param @NodeType "nodeType"
-        name = param @Text "name"
         parentId = paramOrNothing @UUID "parentTreeId"
-    _ <- TreeRepo.createTreeNode ownerType ownerId nodeType name parentId
+    _ <- TreeRepo.createTreeNode ownerType ownerId nodeType parentId
     redirectBack
 
   action TreeUpdateAction = do
     let treeId = Id (param @UUID "treeId") :: Id Tree
-        mbName = paramOrNothing @Text "name"
         parentId = paramOrNothing @UUID "parentTreeId"
         nodeOrder = param @Int "nodeOrder"
-    TreeRepo.updateTreeNode treeId mbName parentId nodeOrder
+    TreeRepo.updateTreeNode treeId parentId nodeOrder
     redirectBack
 
   action TreeDeleteAction = do
@@ -41,7 +39,6 @@ treeToJson node =
     , "owner_type" A..= inputValue (get #ownerType node)
     , "owner_id" A..= get #ownerId node
     , "node_type" A..= inputValue (get #nodeType node)
-    , "name" A..= get #name node
     , "parent_tree_id" A..= get #parentTreeId node
     , "node_order" A..= get #nodeOrder node
     ]

@@ -59,3 +59,23 @@ tests = do
     W.decodeCellsFromJson mixed `shouldEqual`
       [ { id: "c3", cellType: "Backtest", cellOrder: 3, content: Nothing } ]
     W.decodeCellsFromJson (J.fromString "oops") `shouldEqual` []
+
+  it "buildCellUpdateInput returns Nothing when cellId is empty" do
+    W.buildCellUpdateInput "" "raw" "abc" `shouldEqual` Nothing
+
+  it "buildCellUpdateInput returns Just when cellId is present" do
+    W.buildCellUpdateInput "c1" "chart" "[1,2,3]" `shouldEqual`
+      Just { cellId: "c1", cellType: "chart", content: "[1,2,3]" }
+
+  it "cellTypeOptions includes chart type and label" do
+    W.cellTypeOptions `shouldEqual`
+      [ Tuple "raw" "Raw"
+      , Tuple "image" "Image"
+      , Tuple "backtest" "Backtest"
+      , Tuple "chart" "Chart"
+      ]
+
+  it "isChartCellType supports chart and legacy lightweight_charts" do
+    W.isChartCellType "chart" `shouldEqual` true
+    W.isChartCellType "lightweight_charts" `shouldEqual` true
+    W.isChartCellType "raw" `shouldEqual` false

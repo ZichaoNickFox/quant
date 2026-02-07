@@ -1,52 +1,46 @@
 module Common.TreeWidget
-  ( createTreeWidgetByOwnerType
-  , TreeWidgetHandle
-  , TreeWidgetAction(..)
+  ( buildCreateUrl
   , buildUpdateUrl
-  , buildRenameUrl
+  , createFRP
+  , Events
   ) where
-
-import Prelude
 
 import Affjax.ResponseFormat as RF
 import Affjax.Web as AX
+import Common.TreeNodeWidget as TreeNodeWidget
+import Data.Argonaut.Core as J
+import Data.Argonaut.Decode as D
 import Data.Array as A
 import Data.Either (Either(..))
+import Data.Foldable (for_, traverse_)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Foldable (traverse_)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Effect.Aff (Aff)
+import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Exception (throw)
 import Effect.Ref as Ref
-import FFI.URI (encodeURIComponent)
+import Foreign.Object as FO
 import FRP as FRP
-import FRP.Tree as Tree
-import FRP.Tree (TreeAction(..), TreeNode, TreeUpdatePatch, movePatches)
+import FRP.Component.Tree as Tree
+import FRP.Component.Tree (MoveDir(..), TreeUpdatePatch, movePatches)
+import Prelude
 import Web.DOM.Element (Element, getAttribute)
 import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.HTML (window)
 import Web.HTML.HTMLDocument as HTMLDoc
 import Web.HTML.Window (document)
 
-import Data.Argonaut.Core as J
-import Data.Argonaut.Decode as D
-import Foreign.Object as FO
-
-type TreeWidgetHandle =
-  { onTreeUpdate :: FRP.Event Tree.TreeNode
-  , actionPush :: TreeWidgetAction -> Effect Unit
+type Events =
+  { refreshPush :: Effect Unit
+  , onNodeSelected :: FRP.Event (Tree.TreeNode TreeNodeWidget.TreeNodePayload)
   }
 
-data TreeWidgetAction
-  = RefreshTree
-
-createTreeWidgetByOwnerType
+createFRP
   :: String
   -> String
-  -> Effect TreeWidgetHandle
-createTreeWidgetByOwnerType ownerType selector = do
+  -> Effect Events
+createFRP ownerType selector = do
   win <- window
   htmlDoc <- document win
   mRoot <- querySelector (QuerySelector selector) (HTMLDoc.toParentNode htmlDoc)
@@ -54,110 +48,65 @@ createTreeWidgetByOwnerType ownerType selector = do
     Nothing -> throw ("Missing tree root element for selector: " <> selector)
     Just rootEl -> setupTreeRoot ownerType rootEl
 
-setupTreeRoot
-  :: String
-  -> Element
-  -> Effect TreeWidgetHandle
-setupTreeRoot ownerType rootEl = do
-  mOwnerId <- getAttribute "data-owner-id" rootEl
-  let ownerId = fromMaybe "" mOwnerId
-  handle <- Tree.createTree rootEl []
-  { event: actionEvent, push: actionPush } <- FRP.create
-  { event: refreshEvent, push: refreshPush } <- FRP.create
-  refreshSeqRef <- Ref.new 0
+buildCreateUrl :: String -> String -> String -> String
+buildCreateUrl ownerType ownerId nodeId =
+  let base = "/TreeCreate?ownerType=" <> ownerType
+        <> "&ownerId=" <> ownerId
+        <> "&nodeType=file&name=NewNode"
+  in if nodeId == ""
+      then base
+      else base <> "&parentTreeId=" <> nodeId
 
-  fetchRequester <- FRP.createRequester
-    ("[Tree " <> ownerType <> "] fetch req")
-    ("[Tree " <> ownerType <> "] fetch resp")
-    \_ -> do
-      seq <- liftEffect do
-        n <- Ref.read refreshSeqRef
-        let n' = n + 1
-        Ref.write n' refreshSeqRef
-        pure n'
-      fetchTreeNodes ownerType ownerId seq
+buildUpdateUrl :: TreeUpdatePatch -> String
+buildUpdateUrl patch =
+  let base = "/TreeUpdate?treeId=" <> patch.externalId <> "&nodeOrder=" <> show patch.nodeOrder
+  in case patch.parentExternalId of
+      Just pid -> base <> "&parentTreeId=" <> pid
+      Nothing -> base
 
-  directRequester <- FRP.createRequester
-    ("[Tree " <> ownerType <> "] direct req")
-    ("[Tree " <> ownerType <> "] direct resp")
-    (runNonMoveAction ownerType ownerId)
+callVoidAff :: String -> Aff Unit
+callVoidAff url = do
+  _ <- AX.get RF.ignore url
+  pure unit
 
-  moveRequester <- FRP.createRequester
-    ("[Tree " <> ownerType <> "] move req")
-    ("[Tree " <> ownerType <> "] move resp")
-    \(Tuple action nodes) -> runMoveAction action nodes
-
-  _ <- FRP.subscribe refreshEvent \_ -> fetchRequester.requestPush unit
-  _ <- FRP.subscribe fetchRequester.responseEvent handle.setNodes
-  _ <- FRP.subscribe handle.directActionEvent directRequester.requestPush
-  _ <- FRP.subscribe directRequester.responseEvent \shouldRefresh ->
-    when shouldRefresh (refreshPush unit)
-  _ <- FRP.subscribe handle.moveActionEvent moveRequester.requestPush
-  _ <- FRP.subscribe moveRequester.responseEvent \shouldRefresh ->
-    when shouldRefresh (refreshPush unit)
-  _ <- FRP.subscribe actionEvent \action ->
-    case action of
-      RefreshTree -> refreshPush unit
-
-  refreshPush unit
-  pure
-    { onTreeUpdate: handle.selectedNodeEvent
-    , actionPush
-    }
-
-fetchTreeNodes :: String -> String -> Int -> Aff (Array TreeNode)
-fetchTreeNodes ownerType ownerId refreshSeq =
-  let url = "/TreeRead?ownerType=" <> ownerType <> "&ownerId=" <> ownerId <> "&r=" <> show refreshSeq
-  in do
-  response <- AX.get RF.json url
-  pure $ case response of
-    Left _ -> []
-    Right ok ->
-      case D.decodeJson ok.body :: Either D.JsonDecodeError (Array J.Json) of
-        Left _ -> []
-        Right arr -> A.mapMaybe decodeNode arr
-
-runNonMoveAction :: String -> String -> TreeAction -> Aff Boolean
-runNonMoveAction ownerType ownerId action =
-  case action of
-    ActionReload ->
-      pure true
-    ActionAddRoot -> do
-      callVoidAff $ "/TreeCreate?ownerType=" <> ownerType <> "&ownerId=" <> ownerId <> "&nodeType=file&name=NewNode"
-      pure true
-    ActionAddChild nodeId -> do
-      callVoidAff $ "/TreeCreate?ownerType=" <> ownerType <> "&ownerId=" <> ownerId <> "&nodeType=file&name=NewNode&parentTreeId=" <> nodeId
-      pure true
-    ActionDelete nodeId -> do
-      callVoidAff $ "/TreeDelete?treeId=" <> nodeId
-      pure true
-    ActionRename nodeId newName parentTreeId nodeOrder -> do
-      callVoidAff $ buildRenameUrl nodeId newName parentTreeId nodeOrder
-      pure true
-    ActionMove _ _ ->
-      pure false
-
-runMoveAction :: TreeAction -> Array TreeNode -> Aff Boolean
-runMoveAction action nodes =
-  case action of
-    ActionMove dir nodeId ->
-      case A.find (\n -> n.id == nodeId) nodes of
-        Nothing -> pure false
-        Just node -> do
-          let urls = map buildUpdateUrl (movePatches dir nodes node)
-          traverse_ callVoidAff urls
-          pure (not (A.null urls))
-    _ -> pure false
-
-decodeNode :: J.Json -> Maybe TreeNode
+decodeNode :: J.Json -> Maybe (Tree.TreeNode TreeNodeWidget.TreeNodePayload)
 decodeNode json = do
   obj <- J.toObject json
   nodeId <- readField ["id"] obj
-  name <- readField ["name"] obj
+  let name = fromMaybe "" (readOptionalField ["name"] obj)
+  ownerId <- readField ["owner_id", "ownerId"] obj
   nodeType <- readField ["node_type", "nodeType"] obj
   nodeOrder <- readField ["node_order", "nodeOrder"] obj
-  let parentTreeId = readOptionalField ["parent_tree_id", "parentTreeId"] obj
-  pure { id: nodeId, name, nodeType, parentTreeId, nodeOrder }
+  let parentExternalId = readOptionalField ["parent_tree_id", "parentExternalId"] obj
+  pure
+    { externalId: nodeId
+    , nodeType
+    , parentExternalId
+    , nodeOrder
+    , payload: { ownerId, name }
+    }
+
+firstPresent :: Array String -> FO.Object J.Json -> Maybe J.Json
+firstPresent keys obj =
+  case A.uncons keys of
+    Nothing -> Nothing
+    Just { head, tail } ->
+      case FO.lookup head obj of
+        Just v -> Just v
+        Nothing -> firstPresent tail obj
+
+performMove
+  :: MoveDir
+  -> String
+  -> Array (Tree.TreeNode TreeNodeWidget.TreeNodePayload)
+  -> Aff Boolean
+performMove dir nodeId nodes =
+  case A.find (\n -> n.externalId == nodeId) nodes of
+    Nothing -> pure false
+    Just node -> do
+      let urls = map buildUpdateUrl (movePatches dir nodes node)
+      traverse_ callVoidAff urls
+      pure (not (A.null urls))
 
 readField :: forall a. D.DecodeJson a => Array String -> FO.Object J.Json -> Maybe a
 readField keys obj = do
@@ -175,27 +124,89 @@ readOptionalField keys obj =
         Left _ -> Nothing
         Right v -> v
 
-firstPresent :: Array String -> FO.Object J.Json -> Maybe J.Json
-firstPresent keys obj =
-  case A.uncons keys of
-    Nothing -> Nothing
-    Just { head, tail } ->
-      case FO.lookup head obj of
-        Just v -> Just v
-        Nothing -> firstPresent tail obj
+requestTreeNodes :: String -> String -> Int -> Aff (Array (Tree.TreeNode TreeNodeWidget.TreeNodePayload))
+requestTreeNodes ownerType ownerId refreshSeq =
+  let url = "/TreeRead?ownerType=" <> ownerType <> "&ownerId=" <> ownerId <> "&r=" <> show refreshSeq
+  in do
+  response <- AX.get RF.json url
+  pure $ case response of
+    Left _ -> []
+    Right ok ->
+      case D.decodeJson ok.body :: Either D.JsonDecodeError (Array J.Json) of
+        Left _ -> []
+        Right arr -> A.mapMaybe decodeNode arr
 
-callVoidAff :: String -> Aff Unit
-callVoidAff url = do
-  _ <- AX.get RF.ignore url
-  pure unit
+setupTreeRoot
+  :: String
+  -> Element
+  -> Effect Events
+setupTreeRoot ownerType rootEl = do
+  mOwnerId <- getAttribute "data-owner-id" rootEl
+  let ownerId = fromMaybe "" mOwnerId
+  handle <- Tree.createFRP rootEl []
+    { createNodeFRP: TreeNodeWidget.createFRP
+    , rootName: ownerType
+    }
 
-buildUpdateUrl :: TreeUpdatePatch -> String
-buildUpdateUrl patch =
-  let base = "/TreeUpdate?treeId=" <> patch.treeId <> "&nodeOrder=" <> show patch.nodeOrder
-  in case patch.parentTreeId of
-      Just pid -> base <> "&parentTreeId=" <> pid
-      Nothing -> base
+  -- Connect node events to tree events
+  _ <- FRP.subscribe handle.onNodeCreatedSubs \{ node, nodeEvents, container } -> do
+    _ <- FRP.subscribe nodeEvents.onAddChild handle.addChildPush
+    _ <- FRP.subscribe nodeEvents.onDelete handle.deletePush
+    _ <- FRP.subscribe nodeEvents.onRename \{ nodeId, name, parentExternalId, nodeOrder } ->
+      -- TODO: implement rename handler
+      pure unit
+    _ <- FRP.subscribe nodeEvents.onMoveUp handle.moveUpPush
+    _ <- FRP.subscribe nodeEvents.onMoveDown handle.moveDownPush
+    _ <- FRP.subscribe nodeEvents.onPromote handle.promotePush
+    _ <- FRP.subscribe nodeEvents.onDemote handle.demotePush
+    _ <- FRP.subscribe nodeEvents.onSelect handle.selectNodePush
+    pure unit
 
-buildRenameUrl :: String -> String -> Maybe String -> Int -> String
-buildRenameUrl treeId name parentTreeId nodeOrder =
-  buildUpdateUrl { treeId, parentTreeId, nodeOrder } <> "&name=" <> encodeURIComponent name
+  { event: refreshEvent, push: refreshPush } <- FRP.create
+  let refresh = refreshPush unit
+  refreshSeqRef <- Ref.new 0
+
+  requestRequester <- FRP.createRequester
+    ("[Tree " <> ownerType <> "] request req")
+    ("[Tree " <> ownerType <> "] request resp")
+    \_ -> do
+      seq <- liftEffect do
+        n <- Ref.read refreshSeqRef
+        let n' = n + 1
+        Ref.write n' refreshSeqRef
+        pure n'
+      requestTreeNodes ownerType ownerId seq
+
+  _ <- FRP.subscribe refreshEvent \_ -> requestRequester.requestPush unit
+  _ <- FRP.subscribe requestRequester.responseEvent handle.setNodesPush
+  _ <- FRP.subscribe handle.onReloadSubs \_ ->
+    refresh
+  _ <- FRP.subscribe handle.onAddChildSubs \nodeId ->
+    launchAff_ do
+      callVoidAff (buildCreateUrl ownerType ownerId nodeId)
+      liftEffect refresh
+  _ <- FRP.subscribe handle.onDeleteSubs \nodeId ->
+    launchAff_ do
+      callVoidAff ("/TreeDelete?externalId=" <> nodeId)
+      liftEffect refresh
+  _ <- FRP.subscribe handle.onMoveUpSubs \(Tuple nodeId nodes) ->
+    launchAff_ do
+      shouldRefresh <- performMove MoveUp nodeId nodes
+      when shouldRefresh (liftEffect refresh)
+  _ <- FRP.subscribe handle.onMoveDownSubs \(Tuple nodeId nodes) ->
+    launchAff_ do
+      shouldRefresh <- performMove MoveDown nodeId nodes
+      when shouldRefresh (liftEffect refresh)
+  _ <- FRP.subscribe handle.onPromoteSubs \(Tuple nodeId nodes) ->
+    launchAff_ do
+      shouldRefresh <- performMove Promote nodeId nodes
+      when shouldRefresh (liftEffect refresh)
+  _ <- FRP.subscribe handle.onDemoteSubs \(Tuple nodeId nodes) ->
+    launchAff_ do
+      shouldRefresh <- performMove Demote nodeId nodes
+      when shouldRefresh (liftEffect refresh)
+  refresh
+  pure
+    { refreshPush: refresh
+    , onNodeSelected: handle.onNodeSelected
+    }

@@ -26,17 +26,17 @@ tests = aroundAll (withIHPApp WebApplication config) do
     it "TreeCreateAction assigns node_order by sibling group and isolates owner scope" $ withContext do
       ownerA <- mkUuid "00000000-0000-0000-0000-000000000121"
       ownerB <- mkUuid "00000000-0000-0000-0000-000000000122"
-      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file"), ("name", "root-a")]
-      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file"), ("name", "root-b")]
-      rootA <- query @Tree |> filterWhere (#ownerType, TreeOwnerTypeNote) |> filterWhere (#ownerId, ownerA) |> filterWhere (#name, "root-a") |> fetchOneOrNothing >>= expectJust "root-a missing"
-      rootB <- query @Tree |> filterWhere (#ownerType, TreeOwnerTypeNote) |> filterWhere (#ownerId, ownerA) |> filterWhere (#name, "root-b") |> fetchOneOrNothing >>= expectJust "root-b missing"
+      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file")]
+      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file")]
+      rootA <- query @Tree |> filterWhere (#ownerType, TreeOwnerTypeNote) |> filterWhere (#ownerId, ownerA) |> filterWhere (#nodeOrder, 1) |> fetchOneOrNothing >>= expectJust "root-a missing"
+      rootB <- query @Tree |> filterWhere (#ownerType, TreeOwnerTypeNote) |> filterWhere (#ownerId, ownerA) |> filterWhere (#nodeOrder, 2) |> fetchOneOrNothing >>= expectJust "root-b missing"
       let (Id rootAUuid) = get #id rootA
           (Id rootBUuid) = get #id rootB
-      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file"), ("name", "child-a-1"), ("parentTreeId", cs (tshow rootAUuid))]
-      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file"), ("name", "child-a-2"), ("parentTreeId", cs (tshow rootAUuid))]
-      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file"), ("name", "child-b-1"), ("parentTreeId", cs (tshow rootBUuid))]
-      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerB)), ("nodeType", "file"), ("name", "other-owner-root")]
-      _ <- callActionWithParams TreeCreateAction [("ownerType", "strategy"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file"), ("name", "strategy-root")]
+      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file"), ("parentTreeId", cs (tshow rootAUuid))]
+      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file"), ("parentTreeId", cs (tshow rootAUuid))]
+      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file"), ("parentTreeId", cs (tshow rootBUuid))]
+      _ <- callActionWithParams TreeCreateAction [("ownerType", "note"), ("ownerId", cs (tshow ownerB)), ("nodeType", "file")]
+      _ <- callActionWithParams TreeCreateAction [("ownerType", "strategy"), ("ownerId", cs (tshow ownerA)), ("nodeType", "file")]
 
       rootsA <- query @Tree
         |> filterWhere (#ownerType, TreeOwnerTypeNote)
@@ -83,16 +83,15 @@ tests = aroundAll (withIHPApp WebApplication config) do
     it "TreeReadAction filters by owner and returns nodes ordered by node_order" $ withContext do
       ownerA <- mkUuid "00000000-0000-0000-0000-000000000123"
       ownerB <- mkUuid "00000000-0000-0000-0000-000000000124"
-      _ <- newTree ownerA "n-3" Nothing 3
-      _ <- newTree ownerA "n-1" Nothing 1
-      _ <- newTree ownerA "n-2" Nothing 2
-      _ <- newTree ownerB "other-owner" Nothing 1
-      _ <- newTreeStrategy ownerA "other-type" Nothing 1
+      _ <- newTree ownerA Nothing 3
+      _ <- newTree ownerA Nothing 1
+      _ <- newTree ownerA Nothing 2
+      _ <- newTree ownerB Nothing 1
+      _ <- newTreeStrategy ownerA Nothing 1
 
       response <- callActionWithParams TreeReadAction [("ownerType", "note"), ("ownerId", cs (tshow ownerA))]
       body <- responseBody response
       let rows = fromMaybe [] (decodeTreeRows body)
-      map decodedTreeName rows `shouldBe` ["n-1", "n-2", "n-3"]
       map decodedTreeNodeOrder rows `shouldBe` [1, 2, 3]
       all (\r -> decodedTreeOwnerType r == "note" && decodedTreeOwnerId r == tshow ownerA) rows `shouldBe` True
 
@@ -103,31 +102,28 @@ tests = aroundAll (withIHPApp WebApplication config) do
         [ ("ownerType", "note")
         , ("ownerId", cs (tshow ownerId))
         , ("nodeType", "file")
-        , ("name", "orphan")
         , ("parentTreeId", cs (tshow invalidParent))
         ]
       node <- query @Tree
         |> filterWhere (#ownerType, TreeOwnerTypeNote)
         |> filterWhere (#ownerId, ownerId)
-        |> filterWhere (#name, "orphan")
+        |> filterWhere (#parentTreeId, Nothing)
         |> fetchOneOrNothing
         >>= expectJust "orphan missing"
       get #parentTreeId node `shouldBe` Nothing
 
-    it "TreeUpdateAction updates name/parent/node_order and keeps name when omitted" $ withContext do
+    it "TreeUpdateAction updates parent/node_order" $ withContext do
       ownerId <- mkUuid "00000000-0000-0000-0000-000000000125"
-      a <- newTree ownerId "a" Nothing 1
-      b <- newTree ownerId "b" Nothing 2
+      a <- newTree ownerId Nothing 1
+      b <- newTree ownerId Nothing 2
       let (Id aId) = get #id a
           (Id bId) = get #id b
       _ <- callActionWithParams TreeUpdateAction
         [ ("treeId", cs (tshow bId))
         , ("nodeOrder", "1")
         , ("parentTreeId", cs (tshow aId))
-        , ("name", "b-renamed")
         ]
       afterFirst <- fetchOne (get #id b)
-      get #name afterFirst `shouldBe` "b-renamed"
       get #parentTreeId afterFirst `shouldBe` Just aId
       get #nodeOrder afterFirst `shouldBe` 1
 
@@ -137,18 +133,17 @@ tests = aroundAll (withIHPApp WebApplication config) do
         , ("parentTreeId", cs (tshow aId))
         ]
       afterSecond <- fetchOne (get #id b)
-      get #name afterSecond `shouldBe` "b-renamed"
       get #parentTreeId afterSecond `shouldBe` Just aId
       get #nodeOrder afterSecond `shouldBe` 2
 
     it "TreeUpdateAction rejects self/cycle/cross-owner parents by keeping old parent" $ withContext do
       ownerId <- mkUuid "00000000-0000-0000-0000-000000000128"
       otherOwner <- mkUuid "00000000-0000-0000-0000-000000000129"
-      root <- newTree ownerId "root" Nothing 1
+      root <- newTree ownerId Nothing 1
       let (Id rootId) = get #id root
-      child <- newTree ownerId "child" (Just rootId) 1
+      child <- newTree ownerId (Just rootId) 1
       let (Id childId) = get #id child
-      otherRoot <- newTree otherOwner "other-root" Nothing 1
+      otherRoot <- newTree otherOwner Nothing 1
       let (Id otherRootId) = get #id otherRoot
 
       _ <- callActionWithParams TreeUpdateAction
@@ -177,13 +172,13 @@ tests = aroundAll (withIHPApp WebApplication config) do
 
     it "TreeDeleteAction deletes subtree nodes and associated cells" $ withContext do
       ownerId <- mkUuid "00000000-0000-0000-0000-000000000126"
-      root <- newTree ownerId "root-del" Nothing 1
+      root <- newTree ownerId Nothing 1
       let (Id rootId) = get #id root
-      child <- newTree ownerId "child-del" (Just rootId) 1
+      child <- newTree ownerId (Just rootId) 1
       let (Id childId) = get #id child
-      grandChild <- newTree ownerId "grand-del" (Just childId) 1
+      grandChild <- newTree ownerId (Just childId) 1
       let (Id grandId) = get #id grandChild
-      keep <- newTree ownerId "keep" Nothing 2
+      keep <- newTree ownerId Nothing 2
       let (Id keepId) = get #id keep
 
       _ <- newCell CellOwnerTypeNote rootId 1 "root-cell"
@@ -222,24 +217,22 @@ expectJust :: Text -> Maybe a -> IO a
 expectJust _ (Just x) = pure x
 expectJust msg Nothing = expectationFailure (cs msg) >> fail (cs msg)
 
-newTree :: (?modelContext :: ModelContext) => UUID -> Text -> Maybe UUID -> Int -> IO Tree
-newTree ownerId name parentTreeId nodeOrder =
+newTree :: (?modelContext :: ModelContext) => UUID -> Maybe UUID -> Int -> IO Tree
+newTree ownerId parentTreeId nodeOrder =
   newRecord @Tree
     |> set #ownerType TreeOwnerTypeNote
     |> set #ownerId ownerId
     |> set #nodeType Types.File
-    |> set #name name
     |> set #parentTreeId parentTreeId
     |> set #nodeOrder nodeOrder
     |> createRecord
 
-newTreeStrategy :: (?modelContext :: ModelContext) => UUID -> Text -> Maybe UUID -> Int -> IO Tree
-newTreeStrategy ownerId name parentTreeId nodeOrder =
+newTreeStrategy :: (?modelContext :: ModelContext) => UUID -> Maybe UUID -> Int -> IO Tree
+newTreeStrategy ownerId parentTreeId nodeOrder =
   newRecord @Tree
     |> set #ownerType TreeOwnerTypeStrategy
     |> set #ownerId ownerId
     |> set #nodeType Types.File
-    |> set #name name
     |> set #parentTreeId parentTreeId
     |> set #nodeOrder nodeOrder
     |> createRecord
@@ -257,7 +250,6 @@ newCell ownerType ownerId order content =
 data DecodedTree = DecodedTree
   { ownerType :: Text
   , ownerId :: Text
-  , name :: Text
   , nodeOrder :: Int
   }
 
@@ -273,9 +265,8 @@ decodeTreeRow :: A.Value -> Maybe DecodedTree
 decodeTreeRow (A.Object obj) = do
   ownerType <- lookupText ["owner_type", "ownerType"] obj
   ownerId <- lookupText ["owner_id", "ownerId"] obj
-  name <- lookupText ["name"] obj
   nodeOrder <- lookupInt ["node_order", "nodeOrder"] obj
-  pure DecodedTree { ownerType, ownerId, name, nodeOrder }
+  pure DecodedTree { ownerType, ownerId, nodeOrder }
 decodeTreeRow _ = Nothing
 
 lookupText :: [Text] -> A.Object -> Maybe Text
@@ -304,9 +295,6 @@ decodedTreeOwnerType DecodedTree { ownerType = x } = x
 
 decodedTreeOwnerId :: DecodedTree -> Text
 decodedTreeOwnerId DecodedTree { ownerId = x } = x
-
-decodedTreeName :: DecodedTree -> Text
-decodedTreeName DecodedTree { name = x } = x
 
 decodedTreeNodeOrder :: DecodedTree -> Int
 decodedTreeNodeOrder DecodedTree { nodeOrder = x } = x

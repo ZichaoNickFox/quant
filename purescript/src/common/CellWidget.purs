@@ -1,10 +1,11 @@
 module Common.CellWidget
   ( CellRow
   , CellUpdateInput
-  , CellWidgetAction(..)
-  , CellWidgetHandle
-  , createCellWidget
-  , renderCellList
+  , Events
+  , buildCellUpdateInput
+  , cellTypeOptions
+  , isChartCellType
+  , createFRP
   , decodeCellsFromJson
   ) where
 
@@ -14,25 +15,181 @@ import Data.Argonaut.Core as J
 import Data.Argonaut.Decode as D
 import Data.Array as A
 import Data.Either (Either(..))
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (for_)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
+import FFI.LightweightCharts as LightweightCharts
 import FRP as FRP
+import FRP.Component.TextArea as Textarea
 import Foreign.Object as FO
 import Web.DOM.Document (Document, createElement)
-import Web.DOM.Element (Element, fromNode, setAttribute, toEventTarget, toNode, toParentNode)
+import Web.DOM.Element (Element, setAttribute, toEventTarget, toNode)
 import Web.DOM.Node (appendChild, setTextContent)
-import Web.DOM.NodeList as NodeList
-import Web.DOM.ParentNode (QuerySelector(..), querySelector, querySelectorAll)
 import Web.Event.Event (EventType(..))
 import Web.Event.EventTarget (addEventListener, eventListener)
-import Web.HTML (window)
-import Web.HTML.HTMLDocument as HTMLDoc
 import Web.HTML.HTMLInputElement as HTMLInput
 import Web.HTML.HTMLSelectElement as HTMLSelect
 import Web.HTML.HTMLTextAreaElement as HTMLTextArea
-import Web.HTML.Window (document)
+
+type Events =
+  { element :: Element
+  , init :: Effect Unit
+  , onSaveSubs :: FRP.Event CellUpdateInput
+  , onDeleteSubs :: FRP.Event String
+  , onInsertAboveSubs :: FRP.Event { ownerId :: String, cellId :: String }
+  , onInsertBelowSubs :: FRP.Event { ownerId :: String, cellId :: String }
+  , onMoveUpSubs :: FRP.Event String
+  , onMoveDownSubs :: FRP.Event String
+  }
+
+createFRP :: Document -> String -> Effect String -> CellRow -> Effect Events
+createFRP doc ownerType readOwnerId cell = do
+  { event: onSaveSubs, push: pushSave } <- FRP.create
+  { event: onDeleteSubs, push: pushDelete } <- FRP.create
+  { event: onInsertAboveSubs, push: pushInsertAbove } <- FRP.create
+  { event: onInsertBelowSubs, push: pushInsertBelow } <- FRP.create
+  { event: onMoveUpSubs, push: pushMoveUp } <- FRP.create
+  { event: onMoveDownSubs, push: pushMoveDown } <- FRP.create
+
+  card <- createElement "div" doc
+  setAttribute "class" "card mb-2" card
+  body <- createElement "div" doc
+  setAttribute "class" "card-body" body
+  updateCard <- createElement "div" doc
+  setAttribute "data-cell-update-card" "1" updateCard
+  setAttribute "data-owner-type" ownerType updateCard
+
+  idInput <- createElement "input" doc
+  setAttribute "type" "hidden" idInput
+  setAttribute "name" "cellId" idInput
+  setAttribute "value" cell.id idInput
+
+  headerRow <- createElement "div" doc
+  setAttribute "class" "d-flex gap-2 flex-wrap align-items-center mb-2" headerRow
+
+  typeSelect <- createElement "select" doc
+  setAttribute "name" "cellType" typeSelect
+  setAttribute "class" "form-select form-select-sm w-auto" typeSelect
+  setAttribute "style" "height: 32px;" typeSelect
+  for_ cellTypeOptions \(Tuple value label) ->
+    appendCellTypeOption doc typeSelect cell.cellType value label
+
+  let contentText = fromMaybe "" cell.content
+  textAreaHandle <- Textarea.createTextArea doc
+    { name: "content"
+    , className: "form-control mb-2"
+    , rows: 1
+    , value: contentText
+    , events: Nothing
+    }
+  let contentEl = textAreaHandle.element
+
+  let mCellIdInput = HTMLInput.fromElement idInput
+  let mCellTypeSelect = HTMLSelect.fromElement typeSelect
+  let mContentInput = HTMLTextArea.fromElement contentEl
+
+  _ <- appendChild (toNode idInput) (toNode updateCard)
+  _ <- appendChild (toNode headerRow) (toNode updateCard)
+  appendLightweightChartIfNeeded doc updateCard cell
+  _ <- appendChild (toNode contentEl) (toNode updateCard)
+
+  delBtn <- createElement "button" doc
+  setAttribute "type" "button" delBtn
+  setAttribute "class" "btn btn-sm btn-outline-danger" delBtn
+  setAttribute "style" "height: 32px;" delBtn
+  setAttribute "data-cell-delete-button" "1" delBtn
+  setTextContent "Delete" (toNode delBtn)
+
+  actionRow <- createElement "div" doc
+  setAttribute "class" "d-flex gap-2 flex-wrap" actionRow
+
+  addAboveBtn <- createElement "button" doc
+  setAttribute "type" "button" addAboveBtn
+  setAttribute "class" "btn btn-sm btn-outline-secondary" addAboveBtn
+  setAttribute "style" "height: 32px;" addAboveBtn
+  setAttribute "data-cell-add-above" "1" addAboveBtn
+  setTextContent "Insert Above" (toNode addAboveBtn)
+
+  addBelowBtn <- createElement "button" doc
+  setAttribute "type" "button" addBelowBtn
+  setAttribute "class" "btn btn-sm btn-outline-secondary" addBelowBtn
+  setAttribute "style" "height: 32px;" addBelowBtn
+  setAttribute "data-cell-add-below" "1" addBelowBtn
+  setTextContent "Insert Below" (toNode addBelowBtn)
+
+  moveUpBtn <- createElement "button" doc
+  setAttribute "type" "button" moveUpBtn
+  setAttribute "class" "btn btn-sm btn-outline-secondary" moveUpBtn
+  setAttribute "style" "height: 32px;" moveUpBtn
+  setAttribute "data-cell-move-up" "1" moveUpBtn
+  setTextContent "Move Up" (toNode moveUpBtn)
+
+  moveDownBtn <- createElement "button" doc
+  setAttribute "type" "button" moveDownBtn
+  setAttribute "class" "btn btn-sm btn-outline-secondary" moveDownBtn
+  setAttribute "style" "height: 32px;" moveDownBtn
+  setAttribute "data-cell-move-down" "1" moveDownBtn
+  setTextContent "Move Down" (toNode moveDownBtn)
+
+  _ <- appendChild (toNode delBtn) (toNode actionRow)
+  _ <- appendChild (toNode addAboveBtn) (toNode actionRow)
+  _ <- appendChild (toNode addBelowBtn) (toNode actionRow)
+  _ <- appendChild (toNode moveUpBtn) (toNode actionRow)
+  _ <- appendChild (toNode moveDownBtn) (toNode actionRow)
+
+  _ <- appendChild (toNode typeSelect) (toNode headerRow)
+  _ <- appendChild (toNode actionRow) (toNode headerRow)
+  _ <- appendChild (toNode updateCard) (toNode body)
+  _ <- appendChild (toNode body) (toNode card)
+
+  let readCellId = case mCellIdInput of
+        Nothing -> pure ""
+        Just cellIdInput -> HTMLInput.value cellIdInput
+
+  for_ mContentInput \contentInput -> do
+    onBlur <- eventListener \_ -> do
+      mbInput <- readUpdateInput mCellIdInput mCellTypeSelect (Just contentInput)
+      for_ mbInput pushSave
+    addEventListener (EventType "blur") onBlur false (toEventTarget contentEl)
+
+  onDelete <- eventListener \_ -> do
+    cellId <- readCellId
+    when (cellId /= "") (pushDelete cellId)
+  addEventListener (EventType "click") onDelete false (toEventTarget delBtn)
+
+  onAddAbove <- eventListener \_ -> do
+    cellId <- readCellId
+    ownerId <- readOwnerId
+    when (cellId /= "" && ownerId /= "") (pushInsertAbove { ownerId, cellId })
+  addEventListener (EventType "click") onAddAbove false (toEventTarget addAboveBtn)
+
+  onAddBelow <- eventListener \_ -> do
+    cellId <- readCellId
+    ownerId <- readOwnerId
+    when (cellId /= "" && ownerId /= "") (pushInsertBelow { ownerId, cellId })
+  addEventListener (EventType "click") onAddBelow false (toEventTarget addBelowBtn)
+
+  onMoveUp <- eventListener \_ -> do
+    cellId <- readCellId
+    when (cellId /= "") (pushMoveUp cellId)
+  addEventListener (EventType "click") onMoveUp false (toEventTarget moveUpBtn)
+
+  onMoveDown <- eventListener \_ -> do
+    cellId <- readCellId
+    when (cellId /= "") (pushMoveDown cellId)
+  addEventListener (EventType "click") onMoveDown false (toEventTarget moveDownBtn)
+
+  pure
+    { element: card
+    , init: textAreaHandle.init
+    , onSaveSubs
+    , onDeleteSubs
+    , onInsertAboveSubs
+    , onInsertBelowSubs
+    , onMoveUpSubs
+    , onMoveDownSubs
+    }
 
 type CellRow =
   { id :: String
@@ -47,189 +204,40 @@ type CellUpdateInput =
   , content :: String
   }
 
-data CellWidgetAction
-  = Save CellUpdateInput
-  | Delete String
-  | InsertAbove String String
-  | InsertBelow String String
-  | MoveUp String
-  | MoveDown String
+cellTypeOptions :: Array (Tuple String String)
+cellTypeOptions =
+  [ Tuple "raw" "Raw"
+  , Tuple "image" "Image"
+  , Tuple "backtest" "Backtest"
+  , Tuple "chart" "Chart"
+  ]
 
-type CellWidgetHandle =
-  { onCellAction :: FRP.Event CellWidgetAction
-  , bindCellInteractions :: String -> Effect String -> Effect Unit
-  }
+isChartCellType :: String -> Boolean
+isChartCellType cellType =
+  cellType == "chart" || cellType == "lightweight_charts"
 
-createCellWidget :: Effect CellWidgetHandle
-createCellWidget = do
-  { event: onCellAction, push } <- FRP.create
-  pure
-    { onCellAction
-    , bindCellInteractions: \ownerType readOwnerId ->
-        bindCellInteractionsInternal ownerType readOwnerId push
-    }
+buildCellUpdateInput :: String -> String -> String -> Maybe CellUpdateInput
+buildCellUpdateInput cellId cellType content =
+  if cellId == ""
+    then Nothing
+    else Just { cellId, cellType, content }
 
-bindCellInteractionsInternal :: String -> Effect String -> (CellWidgetAction -> Effect Unit) -> Effect Unit
-bindCellInteractionsInternal ownerType readOwnerId push = do
-  win <- window
-  doc <- document win
-  cards <- querySelectorAll (QuerySelector ("[data-cell-update-card][data-owner-type='" <> ownerType <> "']")) (HTMLDoc.toParentNode doc)
-  cardNodes <- NodeList.toArray cards
-  for_ (A.mapMaybe fromNode cardNodes) \cardEl -> do
-    mCellId <- querySelector (QuerySelector "[name='cellId']") (toParentNode cardEl)
-    let readCellId = case mCellId >>= HTMLInput.fromElement of
-          Nothing -> pure ""
-          Just cellIdInput -> HTMLInput.value cellIdInput
 
-    mContent <- querySelector (QuerySelector "[name='content']") (toParentNode cardEl)
-    for_ mContent \contentEl -> do
-      listener <- eventListener \_ -> do
-        mbInput <- readUpdateInputFromContainer cardEl
-        for_ mbInput (push <<< Save)
-      addEventListener (EventType "blur") listener false (toEventTarget contentEl)
-
-    mDeleteBtn <- querySelector (QuerySelector "[data-cell-delete-button]") (toParentNode cardEl)
-    for_ mDeleteBtn \deleteBtn -> do
-      listener <- eventListener \_ -> do
-        cellId <- readCellId
-        when (cellId /= "") (push (Delete cellId))
-      addEventListener (EventType "click") listener false (toEventTarget deleteBtn)
-
-    mAddAbove <- querySelector (QuerySelector "[data-cell-add-above]") (toParentNode cardEl)
-    for_ mAddAbove \btn -> do
-      listener <- eventListener \_ -> do
-        cellId <- readCellId
-        ownerId <- readOwnerId
-        when (cellId /= "" && ownerId /= "") (push (InsertAbove ownerId cellId))
-      addEventListener (EventType "click") listener false (toEventTarget btn)
-
-    mAddBelow <- querySelector (QuerySelector "[data-cell-add-below]") (toParentNode cardEl)
-    for_ mAddBelow \btn -> do
-      listener <- eventListener \_ -> do
-        cellId <- readCellId
-        ownerId <- readOwnerId
-        when (cellId /= "" && ownerId /= "") (push (InsertBelow ownerId cellId))
-      addEventListener (EventType "click") listener false (toEventTarget btn)
-
-    mMoveUp <- querySelector (QuerySelector "[data-cell-move-up]") (toParentNode cardEl)
-    for_ mMoveUp \btn -> do
-      listener <- eventListener \_ -> do
-        cellId <- readCellId
-        when (cellId /= "") (push (MoveUp cellId))
-      addEventListener (EventType "click") listener false (toEventTarget btn)
-
-    mMoveDown <- querySelector (QuerySelector "[data-cell-move-down]") (toParentNode cardEl)
-    for_ mMoveDown \btn -> do
-      listener <- eventListener \_ -> do
-        cellId <- readCellId
-        when (cellId /= "") (push (MoveDown cellId))
-      addEventListener (EventType "click") listener false (toEventTarget btn)
-
-readUpdateInputFromContainer :: Element -> Effect (Maybe CellUpdateInput)
-readUpdateInputFromContainer container = do
-  mCellId <- querySelector (QuerySelector "[name='cellId']") (toParentNode container)
-  mCellType <- querySelector (QuerySelector "[name='cellType']") (toParentNode container)
-  mContent <- querySelector (QuerySelector "[name='content']") (toParentNode container)
-  case Tuple mCellId mCellType of
-    Tuple (Just cellIdEl) (Just cellTypeEl) -> do
-      let mCellIdInput = HTMLInput.fromElement cellIdEl
-      let mCellTypeSelect = HTMLSelect.fromElement cellTypeEl
-      content <- case mContent >>= HTMLTextArea.fromElement of
+readUpdateInput
+  :: Maybe HTMLInput.HTMLInputElement
+  -> Maybe HTMLSelect.HTMLSelectElement
+  -> Maybe HTMLTextArea.HTMLTextAreaElement
+  -> Effect (Maybe CellUpdateInput)
+readUpdateInput mCellIdInput mCellTypeSelect mContentInput =
+  case Tuple mCellIdInput mCellTypeSelect of
+    Tuple (Just cellIdInput) (Just cellTypeSelect) -> do
+      cellId <- HTMLInput.value cellIdInput
+      cellType <- HTMLSelect.value cellTypeSelect
+      content <- case mContentInput of
         Just contentEl -> HTMLTextArea.value contentEl
         Nothing -> pure ""
-      case Tuple mCellIdInput mCellTypeSelect of
-        Tuple (Just cellIdInput) (Just cellTypeSelect) -> do
-          cellId <- HTMLInput.value cellIdInput
-          cellType <- HTMLSelect.value cellTypeSelect
-          pure $ if cellId == ""
-            then Nothing
-            else Just { cellId, cellType, content }
-        _ -> pure Nothing
+      pure $ buildCellUpdateInput cellId cellType content
     _ -> pure Nothing
-
-renderCellList :: String -> Array CellRow -> Effect Unit
-renderCellList ownerType cells = do
-  win <- window
-  doc <- document win
-  mList <- querySelector (QuerySelector "[data-cell-list]") (HTMLDoc.toParentNode doc)
-  for_ mList \listEl -> do
-    setTextContent "" (toNode listEl)
-    let doc' = HTMLDoc.toDocument doc
-    traverse_ (appendCell doc' listEl ownerType) cells
-
-appendCell :: Document -> Element -> String -> CellRow -> Effect Unit
-appendCell doc listEl ownerType cell = do
-  card <- createElement "div" doc
-  setAttribute "class" "card mb-2" card
-  body <- createElement "div" doc
-  setAttribute "class" "card-body" body
-  updateCard <- createElement "div" doc
-  setAttribute "data-cell-update-card" "1" updateCard
-  setAttribute "data-owner-type" ownerType updateCard
-  idInput <- createElement "input" doc
-  setAttribute "type" "hidden" idInput
-  setAttribute "name" "cellId" idInput
-  setAttribute "value" cell.id idInput
-  typeSelect <- createElement "select" doc
-  setAttribute "name" "cellType" typeSelect
-  setAttribute "class" "form-select form-select-sm w-auto mb-2" typeSelect
-  appendCellTypeOption doc typeSelect cell.cellType "raw" "Raw"
-  appendCellTypeOption doc typeSelect cell.cellType "image" "Image"
-  appendCellTypeOption doc typeSelect cell.cellType "backtest" "Backtest"
-  content <- createElement "textarea" doc
-  setAttribute "class" "form-control mb-2" content
-  setAttribute "name" "content" content
-  setAttribute "rows" "4" content
-  case HTMLTextArea.fromElement content of
-    Just textarea -> HTMLTextArea.setValue (fromMaybe "" cell.content) textarea
-    Nothing -> setTextContent (fromMaybe "" cell.content) (toNode content)
-  _ <- appendChild (toNode idInput) (toNode updateCard)
-  _ <- appendChild (toNode typeSelect) (toNode updateCard)
-  _ <- appendChild (toNode content) (toNode updateCard)
-
-  delBtn <- createElement "button" doc
-  setAttribute "type" "button" delBtn
-  setAttribute "class" "btn btn-sm btn-outline-danger" delBtn
-  setAttribute "data-cell-delete-button" "1" delBtn
-  setTextContent "Delete" (toNode delBtn)
-  actionRow <- createElement "div" doc
-  setAttribute "class" "d-flex gap-2 flex-wrap mt-2" actionRow
-
-  addAboveBtn <- createElement "button" doc
-  setAttribute "type" "button" addAboveBtn
-  setAttribute "class" "btn btn-sm btn-outline-secondary" addAboveBtn
-  setAttribute "data-cell-add-above" "1" addAboveBtn
-  setTextContent "Insert Above" (toNode addAboveBtn)
-
-  addBelowBtn <- createElement "button" doc
-  setAttribute "type" "button" addBelowBtn
-  setAttribute "class" "btn btn-sm btn-outline-secondary" addBelowBtn
-  setAttribute "data-cell-add-below" "1" addBelowBtn
-  setTextContent "Insert Below" (toNode addBelowBtn)
-
-  moveUpBtn <- createElement "button" doc
-  setAttribute "type" "button" moveUpBtn
-  setAttribute "class" "btn btn-sm btn-outline-secondary" moveUpBtn
-  setAttribute "data-cell-move-up" "1" moveUpBtn
-  setTextContent "Move Up" (toNode moveUpBtn)
-
-  moveDownBtn <- createElement "button" doc
-  setAttribute "type" "button" moveDownBtn
-  setAttribute "class" "btn btn-sm btn-outline-secondary" moveDownBtn
-  setAttribute "data-cell-move-down" "1" moveDownBtn
-  setTextContent "Move Down" (toNode moveDownBtn)
-
-  _ <- appendChild (toNode delBtn) (toNode actionRow)
-  _ <- appendChild (toNode addAboveBtn) (toNode actionRow)
-  _ <- appendChild (toNode addBelowBtn) (toNode actionRow)
-  _ <- appendChild (toNode moveUpBtn) (toNode actionRow)
-  _ <- appendChild (toNode moveDownBtn) (toNode actionRow)
-
-  _ <- appendChild (toNode actionRow) (toNode updateCard)
-  _ <- appendChild (toNode updateCard) (toNode body)
-  _ <- appendChild (toNode body) (toNode card)
-  _ <- appendChild (toNode card) (toNode listEl)
-  pure unit
 
 appendCellTypeOption :: Document -> Element -> String -> String -> String -> Effect Unit
 appendCellTypeOption doc selectEl current optionValue optionLabel = do
@@ -239,6 +247,20 @@ appendCellTypeOption doc selectEl current optionValue optionLabel = do
   setTextContent optionLabel (toNode opt)
   _ <- appendChild (toNode opt) (toNode selectEl)
   pure unit
+
+appendLightweightChartIfNeeded :: Document -> Element -> CellRow -> Effect Unit
+appendLightweightChartIfNeeded doc updateCard cell = do
+  when (isChartCellType cell.cellType) do
+    chartEl <- createElement "div" doc
+    setAttribute "class" "border rounded mb-2" chartEl
+    setAttribute "style" "height: 320px;" chartEl
+    _ <- appendChild (toNode chartEl) (toNode updateCard)
+    chart <- LightweightCharts.createChart chartEl
+    series <- LightweightCharts.addCandlestickSeries chart
+    for_ cell.content \contentJson ->
+      when (contentJson /= "") do
+        LightweightCharts.setDataFromJson series contentJson
+        LightweightCharts.fitContent chart
 
 decodeCellsFromJson :: J.Json -> Array CellRow
 decodeCellsFromJson json =

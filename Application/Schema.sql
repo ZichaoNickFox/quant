@@ -1,5 +1,5 @@
 CREATE TYPE NODE_TYPE AS ENUM ('folder', 'file');
-CREATE TYPE CELL_TYPE AS ENUM ('raw', 'image', 'backtest');
+CREATE TYPE CELL_TYPE AS ENUM ('raw', 'image', 'backtest', 'chart');
 CREATE TYPE CELL_OWNER_TYPE AS ENUM ('note', 'strategy');
 CREATE TYPE SYMBOL_TYPE AS ENUM ('stock', 'index', 'etf', 'future', 'option', 'fund');
 CREATE TYPE TREE_OWNER_TYPE AS ENUM ('note', 'strategy');
@@ -22,7 +22,6 @@ CREATE TABLE tree (
     owner_type TREE_OWNER_TYPE NOT NULL,
     owner_id UUID NOT NULL,
     node_type NODE_TYPE NOT NULL,
-    name TEXT NOT NULL,
     parent_tree_id UUID,
     node_order INT NOT NULL
 );
@@ -59,8 +58,10 @@ CREATE TABLE cell (
     UNIQUE(owner_type, owner_id, cell_order)
 );
 CREATE TABLE strategy (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL
 );
 CREATE TABLE note (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL
 );

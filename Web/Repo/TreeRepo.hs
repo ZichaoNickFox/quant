@@ -16,17 +16,15 @@ createTreeNode
   => TreeOwnerType
   -> UUID
   -> NodeType
-  -> Text
   -> Maybe UUID
   -> IO Tree
-createTreeNode ownerType ownerId nodeType name parentId = do
+createTreeNode ownerType ownerId nodeType parentId = do
   safeParentId <- normalizeParentForCreate ownerType ownerId parentId
   order <- nextTreeOrder ownerType ownerId safeParentId
   newRecord @Tree
     |> set #ownerType ownerType
     |> set #ownerId ownerId
     |> set #nodeType nodeType
-    |> set #name name
     |> set #parentTreeId safeParentId
     |> set #nodeOrder order
     |> createRecord
@@ -34,16 +32,13 @@ createTreeNode ownerType ownerId nodeType name parentId = do
 updateTreeNode
   :: (?modelContext :: ModelContext)
   => Id Tree
-  -> Maybe Text
   -> Maybe UUID
   -> Int
   -> IO ()
-updateTreeNode treeId mbName parentId nodeOrder = do
+updateTreeNode treeId parentId nodeOrder = do
   tree <- fetchOne treeId
-  let name = fromMaybe (get #name tree) mbName
   safeParentId <- normalizeParentForUpdate tree parentId
   tree
-    |> set #name name
     |> set #parentTreeId safeParentId
     |> set #nodeOrder nodeOrder
     |> updateRecord

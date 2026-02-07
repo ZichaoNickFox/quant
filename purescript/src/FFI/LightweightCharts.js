@@ -1,14 +1,37 @@
 // Minimal FFI stubs to bridge to the global LightweightCharts library.
 // You can extend as needed.
 
-export const _createChart = (el) => () =>
-  LightweightCharts.createChart(el);
+const fallbackSeries = {
+  setData: () => {},
+};
+
+const fallbackChart = {
+  addCandlestickSeries: () => fallbackSeries,
+  timeScale: () => ({ fitContent: () => {} }),
+};
+
+export const _createChart = (el) => () => {
+  try {
+    if (typeof LightweightCharts === "undefined" || !LightweightCharts.createChart) {
+      console.warn("LightweightCharts is not available on window");
+      return fallbackChart;
+    }
+    return LightweightCharts.createChart(el);
+  } catch (e) {
+    console.error("createChart error", e);
+    return fallbackChart;
+  }
+};
 
 export const _addCandlestickSeries = (chart) => () =>
-  chart.addCandlestickSeries();
-
-export const _setData = (series) => (arr) => () =>
-  series.setData(arr);
+  (() => {
+    try {
+      return chart.addCandlestickSeries();
+    } catch (e) {
+      console.error("addCandlestickSeries error", e);
+      return fallbackSeries;
+    }
+  })();
 
 export const _setDataFromJson = (series) => (json) => () => {
   try {
@@ -19,4 +42,10 @@ export const _setDataFromJson = (series) => (json) => () => {
   }
 };
 
-export const _fitContent = (chart) => () => chart.timeScale().fitContent();
+export const _fitContent = (chart) => () => {
+  try {
+    chart.timeScale().fitContent();
+  } catch (e) {
+    console.error("fitContent error", e);
+  }
+};

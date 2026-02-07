@@ -1,10 +1,8 @@
 module Common.CellsWidget
   ( CellRow
   , CellUpdateInput
-  , CellsUpdate(..)
-  , CellsWidgetAction(..)
-  , CellsWidgetHandle
-  , createCellsWidgetByOwnerType
+  , Events
+  , createFRP
   , buildCellsReadUrl
   , buildCellsReadUrlWithSeq
   , withNonce
@@ -28,9 +26,12 @@ import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
+import Effect.Exception (throw)
 import Effect.Ref as Ref
 import FRP as FRP
-import FRP.Tree as Tree
+import Common.TreeNodeWidget as TreeNodeWidget
+import FRP.Component.Tree as Tree
+import FRP.Component.List as ListWidget
 import Web.DOM.Element (toNode)
 import Web.DOM.Node (setTextContent)
 import Web.DOM.ParentNode (QuerySelector(..), querySelector)
@@ -54,58 +55,45 @@ type CellMoveInput =
   , direction :: String
   }
 
-data CellsUpdate
-  = CellsRendered
-  | CellsMutated
-
-type CellsWidgetHandle =
-  { onCellsUpdate :: FRP.Event CellsUpdate
-  , actionPush :: CellsWidgetAction -> Effect Unit
+type Events =
+  { loadByOwnerIdPush :: Maybe String -> Effect Unit
+  , onRenderedSubs :: FRP.Event Unit
+  , onMutatedSubs :: FRP.Event Unit
   }
 
-data CellsWidgetAction
-  = LoadByTreeNode Tree.TreeNode
-  | NotifyCellsMutated
-  | SaveCell CellUpdateInput
-  | DeleteCell String
-  | InsertCellAbove String String
-  | InsertCellBelow String String
-  | MoveCellUp String
-  | MoveCellDown String
-
-createCellsWidgetByOwnerType
+createFRP
   :: { ownerType :: String
      , detailTitlePrefix :: String
      }
-  -> Effect CellsWidgetHandle
-createCellsWidgetByOwnerType config = do
-  { event: actionEvent, push: actionPush } <- FRP.create
-  { event: onCellsUpdate, push: cellsUpdatePush } <- FRP.create
-  currentNodeRef <- Ref.new (Nothing :: Maybe Tree.TreeNode)
+  -> Effect Events
+createFRP config = do
+  { event: loadByOwnerIdEvent, push: loadByOwnerIdPush } <- FRP.create
+  { event: onRenderedSubs, push: renderedPush } <- FRP.create
+  { event: onMutatedSubs, push: mutatedPush } <- FRP.create
+  currentNodeRef <- Ref.new (Nothing :: Maybe TreeNodeWidget.TreeNodePayload)
   refreshSeqRef <- Ref.new 0
   mutationSeqRef <- Ref.new 0
-  cellWidget <- CellWidget.createCellWidget
-  fetchRequester <- FRP.createRequester
-    ("[Cells " <> config.ownerType <> "] fetch req")
-    ("[Cells " <> config.ownerType <> "] fetch resp")
-    \node -> do
+  requestRequester <- FRP.createRequester
+    ("[Cells " <> config.ownerType <> "] request req")
+    ("[Cells " <> config.ownerType <> "] request resp")
+    \payload -> do
       seq <- liftEffect do
         n <- Ref.read refreshSeqRef
         let n' = n + 1
         Ref.write n' refreshSeqRef
         pure n'
-      cells <- fetchCells config.ownerType node.id seq
-      pure (Tuple node cells)
-  fallbackFetchRequester <- FRP.createRequester
-    ("[Cells " <> config.ownerType <> "] fallback fetch req")
-    ("[Cells " <> config.ownerType <> "] fallback fetch resp")
+      cells <- requestCells config.ownerType payload.ownerId seq
+      pure (Tuple payload cells)
+  fallbackRequestRequester <- FRP.createRequester
+    ("[Cells " <> config.ownerType <> "] fallback request req")
+    ("[Cells " <> config.ownerType <> "] fallback request resp")
     \ownerId -> do
       seq <- liftEffect do
         n <- Ref.read refreshSeqRef
         let n' = n + 1
         Ref.write n' refreshSeqRef
         pure n'
-      fetchCells config.ownerType ownerId seq
+      requestCells config.ownerType ownerId seq
   createAtRequester <- FRP.createRequester
     ("[Cells " <> config.ownerType <> "] create-at req")
     ("[Cells " <> config.ownerType <> "] create-at resp")
@@ -115,7 +103,7 @@ createCellsWidgetByOwnerType config = do
         let n' = n + 1
         Ref.write n' mutationSeqRef
         pure n'
-      callCreateAtAff config.ownerType input
+      requestCreateAt config.ownerType input
   updateRequester <- FRP.createRequester
     ("[Cells " <> config.ownerType <> "] update req")
     ("[Cells " <> config.ownerType <> "] update resp")
@@ -125,7 +113,7 @@ createCellsWidgetByOwnerType config = do
         let n' = n + 1
         Ref.write n' mutationSeqRef
         pure n'
-      callUpdateAff input
+      requestUpdate input
   deleteRequester <- FRP.createRequester
     ("[Cells " <> config.ownerType <> "] delete req")
     ("[Cells " <> config.ownerType <> "] delete resp")
@@ -135,7 +123,7 @@ createCellsWidgetByOwnerType config = do
         let n' = n + 1
         Ref.write n' mutationSeqRef
         pure n'
-      callDeleteAff cellId
+      requestDelete cellId
   moveRequester <- FRP.createRequester
     ("[Cells " <> config.ownerType <> "] move req")
     ("[Cells " <> config.ownerType <> "] move resp")
@@ -145,82 +133,79 @@ createCellsWidgetByOwnerType config = do
         let n' = n + 1
         Ref.write n' mutationSeqRef
         pure n'
-      callMoveAff input
-  cellWidget.bindCellInteractions config.ownerType readCreateOwnerId
-
-  _ <- FRP.subscribe cellWidget.onCellAction \cellAction ->
-    case cellAction of
-      CellWidget.Save input ->
-        actionPush (SaveCell input)
-      CellWidget.Delete cellId ->
-        actionPush (DeleteCell cellId)
-      CellWidget.InsertAbove ownerId cellId ->
-        actionPush (InsertCellAbove ownerId cellId)
-      CellWidget.InsertBelow ownerId cellId ->
-        actionPush (InsertCellBelow ownerId cellId)
-      CellWidget.MoveUp cellId ->
-        actionPush (MoveCellUp cellId)
-      CellWidget.MoveDown cellId ->
-        actionPush (MoveCellDown cellId)
-
-  _ <- FRP.subscribe actionEvent \action ->
-    case action of
-      NotifyCellsMutated ->
-        do
-          cellsUpdatePush CellsMutated
-          reloadCells config.ownerType currentNodeRef fetchRequester.requestPush fallbackFetchRequester.requestPush
-      LoadByTreeNode node ->
-        do
-          Ref.write (Just node) currentNodeRef
-          fetchRequester.requestPush node
-      SaveCell input ->
-        updateRequester.requestPush input
-      DeleteCell cellId ->
-        deleteRequester.requestPush cellId
-      InsertCellAbove ownerId anchorCellId ->
-        createAtRequester.requestPush { ownerId, anchorCellId, position: "above" }
-      InsertCellBelow ownerId anchorCellId ->
-        createAtRequester.requestPush { ownerId, anchorCellId, position: "below" }
-      MoveCellUp cellId ->
-        moveRequester.requestPush { cellId, direction: "up" }
-      MoveCellDown cellId ->
-        moveRequester.requestPush { cellId, direction: "down" }
-
-  _ <- FRP.subscribe fetchRequester.responseEvent \(Tuple node cells) -> do
-    setCreateOwnerId node.id
-    renderCellTitle (config.detailTitlePrefix <> node.name)
-    CellWidget.renderCellList config.ownerType cells
-    cellWidget.bindCellInteractions config.ownerType readCreateOwnerId
-    cellsUpdatePush CellsRendered
-
-  _ <- FRP.subscribe fallbackFetchRequester.responseEvent \cells -> do
-    CellWidget.renderCellList config.ownerType cells
-    cellWidget.bindCellInteractions config.ownerType readCreateOwnerId
-    cellsUpdatePush CellsRendered
-
-  _ <- FRP.subscribe createAtRequester.responseEvent \created -> when created do
-    cellsUpdatePush CellsMutated
-    reloadCells config.ownerType currentNodeRef fetchRequester.requestPush fallbackFetchRequester.requestPush
-
-  _ <- FRP.subscribe updateRequester.responseEvent \updated -> when updated do
-    cellsUpdatePush CellsMutated
-    reloadCells config.ownerType currentNodeRef fetchRequester.requestPush fallbackFetchRequester.requestPush
-
-  _ <- FRP.subscribe deleteRequester.responseEvent \deleted -> when deleted do
-    cellsUpdatePush CellsMutated
-    reloadCells config.ownerType currentNodeRef fetchRequester.requestPush fallbackFetchRequester.requestPush
-
-  _ <- FRP.subscribe moveRequester.responseEvent \moved -> when moved do
-    cellsUpdatePush CellsMutated
-    reloadCells config.ownerType currentNodeRef fetchRequester.requestPush fallbackFetchRequester.requestPush
-
-  pure
-    { onCellsUpdate
-    , actionPush
+      requestMove input
+  win <- window
+  doc <- document win
+  let doc' = HTMLDoc.toDocument doc
+  mList <- querySelector (QuerySelector "[data-cell-list]") (HTMLDoc.toParentNode doc)
+  listEl <- case mList of
+    Nothing -> throw "CellsWidget: missing element for selector: [data-cell-list]"
+    Just el -> pure el
+  listHandle <- ListWidget.createFRP
+    { getItemId: \cell -> cell.id
+    , createItemFRP: CellWidget.createFRP doc' config.ownerType readCreateOwnerId
     }
 
-callCreateAtAff :: String -> CellInsertInput -> Aff Boolean
-callCreateAtAff ownerType input = do
+  _ <- FRP.subscribe listHandle.onItemCreatedSubs \events -> do
+    _ <- FRP.subscribe events.onSaveSubs updateRequester.requestPush
+    _ <- FRP.subscribe events.onDeleteSubs deleteRequester.requestPush
+    _ <- FRP.subscribe events.onInsertAboveSubs \payload ->
+      createAtRequester.requestPush
+        { ownerId: payload.ownerId
+        , anchorCellId: payload.cellId
+        , position: "above"
+            }
+    _ <- FRP.subscribe events.onInsertBelowSubs \payload ->
+      createAtRequester.requestPush
+        { ownerId: payload.ownerId
+        , anchorCellId: payload.cellId
+        , position: "below"
+        }
+    _ <- FRP.subscribe events.onMoveUpSubs \cellId ->
+      moveRequester.requestPush { cellId, direction: "up" }
+    _ <- FRP.subscribe events.onMoveDownSubs \cellId ->
+      moveRequester.requestPush { cellId, direction: "down" }
+    pure unit
+
+  _ <- FRP.subscribe loadByOwnerIdEvent \ownerId -> do
+    for_ ownerId \oid ->
+      Ref.write (Just { ownerId: oid, name: "" }) currentNodeRef
+    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+
+  _ <- FRP.subscribe requestRequester.responseEvent \(Tuple payload cells) -> do
+    setCreateOwnerId payload.ownerId
+    renderCellTitle (config.detailTitlePrefix <> payload.name)
+    listHandle.setItemsPush cells
+    renderedPush unit
+
+  _ <- FRP.subscribe fallbackRequestRequester.responseEvent \cells -> do
+    listHandle.setItemsPush cells
+    renderedPush unit
+
+  _ <- FRP.subscribe createAtRequester.responseEvent \created -> when created do
+    mutatedPush unit
+    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+
+  _ <- FRP.subscribe updateRequester.responseEvent \updated -> when updated do
+    mutatedPush unit
+    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+
+  _ <- FRP.subscribe deleteRequester.responseEvent \deleted -> when deleted do
+    mutatedPush unit
+    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+
+  _ <- FRP.subscribe moveRequester.responseEvent \moved -> when moved do
+    mutatedPush unit
+    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+
+  pure
+    { loadByOwnerIdPush
+    , onRenderedSubs
+    , onMutatedSubs
+    }
+
+requestCreateAt :: String -> CellInsertInput -> Aff Boolean
+requestCreateAt ownerType input = do
   let body = FUE.fromArray
         [ Tuple "ownerType" (Just ownerType)
         , Tuple "ownerId" (Just input.ownerId)
@@ -232,8 +217,8 @@ callCreateAtAff ownerType input = do
     Left _ -> false
     Right _ -> true
 
-callUpdateAff :: CellUpdateInput -> Aff Boolean
-callUpdateAff input = do
+requestUpdate :: CellUpdateInput -> Aff Boolean
+requestUpdate input = do
   let body = FUE.fromArray
         [ Tuple "cellId" (Just input.cellId)
         , Tuple "cellType" (Just input.cellType)
@@ -244,16 +229,16 @@ callUpdateAff input = do
     Left _ -> false
     Right _ -> true
 
-callDeleteAff :: String -> Aff Boolean
-callDeleteAff cellId = do
+requestDelete :: String -> Aff Boolean
+requestDelete cellId = do
   let body = FUE.fromArray [ Tuple "cellId" (Just cellId) ]
   res <- AX.post_ "/CellDelete" (Just (RB.formURLEncoded body))
   pure case res of
     Left _ -> false
     Right _ -> true
 
-callMoveAff :: CellMoveInput -> Aff Boolean
-callMoveAff input = do
+requestMove :: CellMoveInput -> Aff Boolean
+requestMove input = do
   let body = FUE.fromArray
         [ Tuple "cellId" (Just input.cellId)
         , Tuple "direction" (Just input.direction)
@@ -263,8 +248,8 @@ callMoveAff input = do
     Left _ -> false
     Right _ -> true
 
-fetchCells :: String -> String -> Int -> Aff (Array CellRow)
-fetchCells ownerType ownerId seq = do
+requestCells :: String -> String -> Int -> Aff (Array CellRow)
+requestCells ownerType ownerId seq = do
   let url = buildCellsReadUrlWithSeq ownerType ownerId seq
   response <- AX.get RF.json url
   pure $ case response of
@@ -316,14 +301,14 @@ readCreateOwnerId = do
 
 reloadCells
   :: String
-  -> Ref.Ref (Maybe Tree.TreeNode)
-  -> (Tree.TreeNode -> Effect Unit)
+  -> Ref.Ref (Maybe TreeNodeWidget.TreeNodePayload)
+  -> (TreeNodeWidget.TreeNodePayload -> Effect Unit)
   -> (String -> Effect Unit)
   -> Effect Unit
-reloadCells _ownerType currentNodeRef fetchByNode fetchByOwnerId = do
+reloadCells _ownerType currentNodeRef requestByNode requestByOwnerId = do
   mbNode <- Ref.read currentNodeRef
   case mbNode of
-    Just node -> fetchByNode node
+    Just node -> requestByNode node
     Nothing -> do
       ownerId <- readCreateOwnerId
-      when (ownerId /= "") (fetchByOwnerId ownerId)
+      when (ownerId /= "") (requestByOwnerId ownerId)

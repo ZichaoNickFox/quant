@@ -134,6 +134,17 @@ tests = aroundAll (withIHPApp WebApplication config) do
       get #content c1' `shouldBe` Just "alpha"
       get #content c2' `shouldBe` Just "beta"
 
+    it "owner_id semantics are note/strategy owner ids, not tree node ids" $ withContext do
+      noteOwnerId <- mkUuid "00000000-0000-0000-0000-000000001123"
+      treeNodeId <- mkUuid "00000000-0000-0000-0000-000000001124"
+      _ <- newCell CellOwnerTypeNote noteOwnerId 1 (Just "owned-by-note")
+
+      byOwner <- CellRepo.loadCells CellOwnerTypeNote noteOwnerId
+      byNodeLikeId <- CellRepo.loadCells CellOwnerTypeNote treeNodeId
+
+      map (get #content) byOwner `shouldBe` [Just "owned-by-note"]
+      byNodeLikeId `shouldBe` []
+
 mkUuid :: Text -> IO UUID
 mkUuid t =
   pure (fromJust (UUID.fromText t))

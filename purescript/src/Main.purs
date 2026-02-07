@@ -9,9 +9,9 @@ import Data.Either (Either(..))
 import Effect (Effect)
 import FFI.SSE (attachEventSource)
 import FRP as FRP
-import PageData as PageData
-import PageNote as PageNote
-import PageStrategy as PageStrategy
+import DataPage as DataPage
+import NotePage as NotePage
+import StrategyPage as StrategyPage
 import Proto.SseStatus (SseStatus(..), sseStatusFromString)
 import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.Event.EventTarget (addEventListener, eventListener)
@@ -29,15 +29,15 @@ main = do
   -- subscribe
   _ <- FRP.subscribeWithLog domEvent "[dom]" \_ -> do
     notifyEvent <- bindNotifyEvent
-    PageData.initFRP beginEvent notifyEvent
+    DataPage.createFRP beginEvent notifyEvent
     win <- window
     doc <- document win
     hasNoteTree <- hasSelector doc "[data-tree-root][data-owner-type='note']"
     when hasNoteTree do
-      PageNote.initFRP beginEvent notifyEvent
+      NotePage.createFRP beginEvent notifyEvent
     hasStrategyTree <- hasSelector doc "[data-tree-root][data-owner-type='strategy']"
     when hasStrategyTree do
-      PageStrategy.initFRP beginEvent notifyEvent
+      StrategyPage.createFRP beginEvent notifyEvent
     FRP.pushWithLog beginPush "[begin]" unit
     pure unit
   _ <- FRP.subscribeWithLog beginEvent "[begin]" \_ -> do

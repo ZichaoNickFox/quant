@@ -6,10 +6,9 @@ import Prelude
 import Test.Common.CellWidgetSpec as CellWidgetSpec
 import Test.Common.CellsWidgetSpec as CellsWidgetSpec
 import Test.Common.TreeWidgetSpec as TreeWidgetSpec
+import Test.FRP.Component.InputSpec as InputSpec
 import Test.FRP.CombinatorSpec as CombinatorSpec
-import Test.FRP.InputTextSpec as InputTextSpec
 import Test.FRP.RequesterSpec as RequesterSpec
-import Test.FRP.TreeSpec as TreeSpec
 import Test.Proto.CandlesSpec as CandlesSpec
 import Test.Proto.SseStatusSpec as SseStatusSpec
 import Test.Proto.SymbolsSpec as SymbolsSpec
@@ -28,12 +27,10 @@ spec = do
     CombinatorSpec.tests
   describe "Common.TreeWidget" do
     TreeWidgetSpec.tests
-  describe "FRP.InputText" do
-    InputTextSpec.tests
+  describe "FRP.Component.Input" do
+    InputSpec.tests
   describe "FRP.Requester" do
     RequesterSpec.tests
-  describe "FRP.Tree" do
-    TreeSpec.tests
   describe "Proto.Candles" do
     CandlesSpec.tests
   describe "Proto.SseStatus" do

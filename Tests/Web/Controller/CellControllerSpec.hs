@@ -16,9 +16,11 @@ import IHP.Test.Mocking (callActionWithParams, responseBody, withContext)
 import Prelude
 import Test.Hspec
 import Web.Controller.CellController ()
+import Web.Controller.TreeController ()
 import Web.FrontController ()
 import Web.Prelude
 import Web.Types
+import qualified Web.Types as Types
 
 tests :: Spec
 tests = aroundAll (withIHPApp WebApplication config) do
@@ -257,6 +259,40 @@ tests = aroundAll (withIHPApp WebApplication config) do
       get #content c1' `shouldBe` Just "alpha"
       get #content c2' `shouldBe` Just "beta"
 
+    it "tree->cell flow uses tree owner_id (note/strategy id) to read shared cells" $ withContext do
+      ownerId <- mkUuid "00000000-0000-0000-0000-000000000130"
+      -- Two different nodes under the same note owner
+      _ <- newRecord @Tree
+        |> set #ownerType TreeOwnerTypeNote
+        |> set #ownerId ownerId
+        |> set #nodeType Types.File
+        |> set #parentTreeId Nothing
+        |> set #nodeOrder 1
+        |> createRecord
+      _ <- newRecord @Tree
+        |> set #ownerType TreeOwnerTypeNote
+        |> set #ownerId ownerId
+        |> set #nodeType Types.File
+        |> set #parentTreeId Nothing
+        |> set #nodeOrder 2
+        |> createRecord
+
+      _ <- newCell CellOwnerTypeNote ownerId 1 (Just "shared-note-cell")
+
+      treeResponse <- callActionWithParams TreeReadAction [("ownerType", "note"), ("ownerId", cs (tshow ownerId))]
+      treeBody <- responseBody treeResponse
+      let treeRows = fromMaybe [] (decodeTreeOwnerRows treeBody)
+      length treeRows `shouldBe` 2
+      all (== tshow ownerId) treeRows `shouldBe` True
+      case treeRows of
+        ownerFromTree : _ -> do
+          cellResponse <- callActionWithParams CellReadAction [("ownerType", "note"), ("ownerId", cs ownerFromTree)]
+          cellBody <- responseBody cellResponse
+          let cells = fromMaybe [] (decodeCellRows cellBody)
+          map decodedCellContent cells `shouldBe` [Just "shared-note-cell"]
+        [] ->
+          expectationFailure "TreeReadAction returned no rows"
+
 mkUuid :: Text -> IO UUID
 mkUuid t =
   pure (fromJust (UUID.fromText t))
@@ -346,3 +382,15 @@ decodedCellOrder DecodedCell { cellOrder = x } = x
 
 decodedCellContent :: DecodedCell -> Maybe Text
 decodedCellContent DecodedCell { content = x } = x
+
+decodeTreeOwnerRows :: LBS.ByteString -> Maybe [Text]
+decodeTreeOwnerRows body = do
+  value <- A.decode body
+  arr <- case value of
+    A.Array a -> Just (V.toList a)
+    _ -> Nothing
+  traverse decodeTreeOwnerId arr
+
+decodeTreeOwnerId :: A.Value -> Maybe Text
+decodeTreeOwnerId (A.Object obj) = lookupText ["owner_id", "ownerId"] obj
+decodeTreeOwnerId _ = Nothing
