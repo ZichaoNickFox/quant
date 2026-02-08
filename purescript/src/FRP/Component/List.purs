@@ -13,6 +13,12 @@ import Effect.Ref as Ref
 import FRP as FRP
 import Prelude
 
+type ListItem item externalId =
+  { externalId :: externalId  -- External id (must be unique)
+  , order :: Int
+  , payload :: item
+  }
+
 type Events item externalId itemEvents =
   { setItemsPush :: Array item -> Effect Unit
   , onItemsChanged :: FRP.Event (Array item)
@@ -24,12 +30,6 @@ type Events item externalId itemEvents =
 type Config item externalId itemEvents =
   { getItemId :: item -> externalId  -- IMPORTANT: Must return unique id for each item
   , createItemFRP :: item -> Effect itemEvents
-  }
-
-type ListItem item externalId =
-  { externalId :: externalId  -- External id (must be unique)
-  , order :: Int
-  , payload :: item
   }
 
 createFRP :: forall item externalId itemEvents. Eq externalId => Config item externalId itemEvents -> Effect (Events item externalId itemEvents)

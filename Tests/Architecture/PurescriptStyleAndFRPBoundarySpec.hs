@@ -18,14 +18,14 @@ tests = do
       exportOffenders <- fmap concat (mapM findExportOrderOffenders (srcFiles <> testFiles))
       (importOffenders <> exportOffenders) `shouldBe` []
 
-    it "frp files expose createFRP as creation interface" do
-      frpFiles <- listPursFiles "purescript/src/FRP"
-      offenders <- fmap concat (mapM findNonCreateFRPConstructors frpFiles)
+    it "purescript src files expose createFRP as creation interface" do
+      srcFiles <- listPursFiles "purescript/src"
+      offenders <- fmap concat (mapM findNonCreateFRPConstructors srcFiles)
       offenders `shouldBe` []
 
-    it "frp subnetwork files order declarations as Events -> Config -> createFRP" do
-      frpFiles <- listPursFiles "purescript/src/FRP"
-      offenders <- fmap concat (mapM findFrpStructureOffenders frpFiles)
+    it "purescript src createFRP files place Events/Config above createFRP" do
+      srcFiles <- listPursFiles "purescript/src"
+      offenders <- fmap concat (mapM findFrpStructureOffenders srcFiles)
       offenders `shouldBe` []
 
 findImportOrderOffenders :: FilePath -> IO [String]
@@ -47,10 +47,10 @@ findExportOrderOffenders file = do
 findNonCreateFRPConstructors :: FilePath -> IO [String]
 findNonCreateFRPConstructors file = do
   content <- readFile file
+  let sigs = topLevelSignatures content
   let offenders =
         [ file <> ":" <> show lineNo <> ": " <> name
-        | (lineNo, lineTxt) <- zip [1 :: Int ..] (lines content)
-        , Just name <- [topLevelSignatureName lineTxt]
+        | (lineNo, name) <- sigs
         , "create" `isPrefixOf` name
         , name /= "createFRP"
         ]
@@ -63,27 +63,21 @@ findFrpStructureOffenders file = do
       mCreate = firstDeclLine "createFRP" decls
       mEvents = firstDeclLine "Events" decls
       mConfig = firstDeclLine "Config" decls
-      firstDecl = case decls of
-        [] -> Nothing
-        (lineNo, _) : _ -> Just lineNo
   case mCreate of
     Nothing -> pure []
     Just createLine ->
       pure
-        ( maybe [] (\eventsLine -> if maybe False (/= eventsLine) firstDecl
-            then [file <> ":" <> show eventsLine <> ": Events must be the first top-level declaration in FRP subnetwork files"]
-            else []) mEvents
-        <> maybe [] (\eventsLine -> maybe [] (\configLine ->
-              if eventsLine > configLine
-                then [file <> ":" <> show configLine <> ": Config must be declared after Events"]
-                else []) mConfig) mEvents
+        ( maybe [] (\eventsLine ->
+              if createLine < eventsLine
+                then [file <> ":" <> show createLine <> ": Events must be declared above createFRP"]
+                else []) mEvents
         <> maybe [] (\configLine ->
-              if configLine > createLine
-                then [file <> ":" <> show createLine <> ": createFRP must be declared after Config"]
+              if createLine < configLine
+                then [file <> ":" <> show createLine <> ": Config must be declared above createFRP"]
                 else []) mConfig
         <> maybe [] (\eventsLine ->
-              if eventsLine > createLine
-                then [file <> ":" <> show createLine <> ": createFRP must be declared after Events"]
+              if maybe False (< eventsLine) mConfig
+                then [file <> ":" <> show eventsLine <> ": Events must be declared above Config"]
                 else []) mEvents
         )
 
@@ -162,6 +156,35 @@ topLevelDeclarations content =
   | (lineNo, lineTxt) <- zip [1 :: Int ..] (lines content)
   , Just name <- [topLevelDeclName lineTxt]
   ]
+
+topLevelSignatures :: String -> [(Int, String)]
+topLevelSignatures content = go (zip [1 :: Int ..] (lines content))
+  where
+    go [] = []
+    go ((lineNo, lineTxt) : rest) =
+      case topLevelSignatureName lineTxt of
+        Just name -> (lineNo, name) : go rest
+        Nothing ->
+          case pendingSignatureName lineTxt of
+            Just name ->
+              case rest of
+                ((nextNo, nextLine) : xs)
+                  | isSignatureLine nextLine -> (lineNo, name) : go ((nextNo, nextLine) : xs)
+                _ -> go rest
+            Nothing -> go rest
+
+    pendingSignatureName line =
+      let stripped = dropWhile isSpace line
+          (name, rest) = span isNameChar stripped
+          restStripped = dropWhile isSpace rest
+      in if not (null name) && startsWithLower name && null restStripped
+          then Just name
+          else Nothing
+
+    isSignatureLine line = "::" `isPrefixOf` dropWhile isSpace line
+    isNameChar c = c == '_' || c == '\'' || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
+    startsWithLower [] = False
+    startsWithLower (c : _) = 'a' <= c && c <= 'z'
 
 firstDeclLine :: String -> [(Int, String)] -> Maybe Int
 firstDeclLine target decls =

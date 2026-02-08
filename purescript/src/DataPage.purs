@@ -12,6 +12,7 @@ import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import FFI.DOM (setInnerHTMLById)
 import FRP as FRP
+import FRP.Requester.ColdWarmRequester as ColdWarmRequester
 import Prelude
 import Proto.SseStatus (SseStatus)
 import Proto.Symbols (APISymbolsResponse(..), SymbolInfo(..), decodeMaybeAPISymbolsResponse)
@@ -116,7 +117,7 @@ createFRP initEvent notifyEvent = do
   let els = mapMaybe fromNode nodes
   when (not (null els)) do
     { requestPush: pushApiSymbolsRequest, responseEvent: apiSymbolsResponses } <-
-      FRP.createColdWarmRequester
+      ColdWarmRequester.createFRP
         "/APISymbols"
         decodeMaybeAPISymbolsResponse
         notifyEvent

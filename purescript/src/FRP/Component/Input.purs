@@ -1,7 +1,7 @@
 module FRP.Component.Input
   ( InputAction(..)
   , InputOutput(..)
-  , createInput
+  , createFRP
   , deriveInputOutput
   ) where
 
@@ -43,14 +43,14 @@ deriveInputOutput actionEvent initialValue =
   in
     filterMap identity $ mapAccum step actionEvent initialValue
 
-createInput
+createFRP
   :: String
   -> Effect
        { actionPush :: InputAction -> Effect Unit
        , startedEvent :: Event String
        , confirmedEvent :: Event String
        }
-createInput initialValue = do
+createFRP initialValue = do
   { event: actionEvent, push: actionPush } <- create
   { event: startedEvent, push: startedPush } <- create
   { event: confirmedEvent, push: confirmedPush } <- create

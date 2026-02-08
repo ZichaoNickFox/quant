@@ -111,7 +111,7 @@ renderNodeEditor doc container depth index node handlers selectedNodeId = do
   case HTMLInput.fromElement inputEl of
     Nothing -> renderNodeName doc container depth index node handlers selectedNodeId
     Just input -> do
-      { actionPush: inputActionPush, startedEvent, confirmedEvent } <- Input.createInput node.payload.name
+      { actionPush: inputActionPush, startedEvent, confirmedEvent } <- Input.createFRP node.payload.name
       closedRef <- Ref.new false
       _ <- FRP.subscribe startedEvent \initialName -> do
         HTMLInput.setValue initialName input

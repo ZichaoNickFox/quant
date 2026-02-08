@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import path from "path";
 
 export default defineConfig({
   testDir: "./",
@@ -10,6 +11,7 @@ export default defineConfig({
   },
   webServer: {
     command: "./run",
+    cwd: path.resolve(__dirname, "..", ".."),
     url: "http://127.0.0.1:8000",
     reuseExistingServer: true,
     timeout: 120_000,

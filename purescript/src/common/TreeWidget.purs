@@ -24,6 +24,7 @@ import Foreign.Object as FO
 import FRP as FRP
 import FRP.Component.Tree (MoveDir(..), TreeUpdatePatch, movePatches)
 import FRP.Component.Tree as Tree
+import FRP.Requester.Requester as Requester
 import Prelude
 import Web.DOM.Element (Element, getAttribute, setAttribute, toNode)
 import Web.DOM.Node (setTextContent)
@@ -175,7 +176,7 @@ setupTreeRoot ownerType rootEl = do
   let refresh = refreshPush unit
   refreshSeqRef <- Ref.new 0
 
-  requestRequester <- FRP.createRequester
+  requestRequester <- Requester.createFRP
     ("[Tree " <> ownerType <> "] request req")
     ("[Tree " <> ownerType <> "] request resp")
     \_ -> do

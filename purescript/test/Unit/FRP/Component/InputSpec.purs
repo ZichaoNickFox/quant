@@ -11,8 +11,8 @@ import Test.Spec.Assertions (shouldEqual)
 
 tests :: Spec Unit
 tests = do
-  it "createInput emits startedEvent and confirmedEvent as a sub network" do
-    net <- liftEffect $ I.createInput "init"
+  it "createFRP emits startedEvent and confirmedEvent as a sub network" do
+    net <- liftEffect $ I.createFRP "init"
     startedRef <- liftEffect $ Ref.new ([] :: Array String)
     confirmedRef <- liftEffect $ Ref.new ([] :: Array String)
     _ <- liftEffect $ subscribe net.startedEvent \x -> Ref.modify_ (\xs -> Array.snoc xs x) startedRef
@@ -64,8 +64,8 @@ tests = do
       , I.ConfirmedEditing "v3"
       ]
 
-  it "createInput keeps startedEvent and confirmedEvent separated" do
-    net <- liftEffect $ I.createInput "seed"
+  it "createFRP keeps startedEvent and confirmedEvent separated" do
+    net <- liftEffect $ I.createFRP "seed"
     startedRef <- liftEffect $ Ref.new ([] :: Array String)
     confirmedRef <- liftEffect $ Ref.new ([] :: Array String)
     _ <- liftEffect $ subscribe net.startedEvent \x -> Ref.modify_ (\xs -> Array.snoc xs x) startedRef

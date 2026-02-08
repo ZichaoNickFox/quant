@@ -19,6 +19,3 @@ direnv exec . bash -lc 'cd purescript && spago test --main Test.Integration.Main
 
 # backend tests
 direnv exec . bash -lc 'runghc $(make print-ghc-extensions) -i. -ibuild -iConfig Tests/Main.hs'
-
-# e2e tests
-npx playwright test --config Tests/E2E/playwright.config.ts

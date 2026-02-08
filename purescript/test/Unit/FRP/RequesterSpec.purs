@@ -5,7 +5,7 @@ import Effect (Effect)
 import Effect.Aff (Aff, makeAff, nonCanceler)
 import Effect.Class (liftEffect)
 import FRP.Event (Event, subscribe)
-import FRP.Requester (createRequester)
+import FRP.Requester.Requester (createFRP)
 import Prelude
 import Test.Spec (Spec, it)
 import Test.Spec.Assertions (shouldEqual)
@@ -18,15 +18,15 @@ awaitOnceWith ev fire = makeAff \k -> do
 
 tests :: Spec Unit
 tests = do
-  it "createRequester emits response for request" do
+  it "createFRP emits response for request" do
     { requestPush, responseEvent } <-
-      liftEffect $ createRequester "[req]" "[resp]" (\r -> pure (r <> "-ok"))
+      liftEffect $ createFRP "[req]" "[resp]" (\r -> pure (r <> "-ok"))
     resp <- awaitOnceWith responseEvent (requestPush "ping")
     resp `shouldEqual` "ping-ok"
 
-  it "createRequester supports multiple requests" do
+  it "createFRP supports multiple requests" do
     { requestPush, responseEvent } <-
-      liftEffect $ createRequester "[req]" "[resp]" (\r -> pure (r <> "-ok"))
+      liftEffect $ createFRP "[req]" "[resp]" (\r -> pure (r <> "-ok"))
     _ <- awaitOnceWith responseEvent (requestPush "a")
     resp <- awaitOnceWith responseEvent (requestPush "b")
     resp `shouldEqual` "b-ok"

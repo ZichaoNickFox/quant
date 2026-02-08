@@ -2,7 +2,7 @@ module FFI.LightweightCharts
   ( addCandlestickSeries
   , CandlestickSeries
   , Chart
-  , createChart
+  , initChart
   , fitContent
   , setDataFromJson
   ) where
@@ -20,8 +20,8 @@ foreign import _addCandlestickSeries :: Chart -> Effect CandlestickSeries
 foreign import _setDataFromJson :: CandlestickSeries -> String -> Effect Unit
 foreign import _fitContent :: Chart -> Effect Unit
 
-createChart :: Element -> Effect Chart
-createChart = _createChart
+initChart :: Element -> Effect Chart
+initChart = _createChart
 
 addCandlestickSeries :: Chart -> Effect CandlestickSeries
 addCandlestickSeries = _addCandlestickSeries

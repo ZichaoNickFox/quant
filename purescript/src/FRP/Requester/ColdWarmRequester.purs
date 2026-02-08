@@ -1,47 +1,22 @@
-module FRP.Requester
-  ( createColdWarmRequester
-  , createRequester
+module FRP.Requester.ColdWarmRequester
+  ( createFRP
   ) where
 
 import Affjax.ResponseFormat as RF
-
 import Affjax.Web as AX
 import Data.Argonaut.Core (Json)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.String (drop, take)
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_)
+import Effect.Aff (launchAff_)
 import Effect.Class (liftEffect)
-import FRP.Event (Event, create, subscribe)
+import FRP.Event (Event, create)
 import FRP.Log (pushWithLog, subscribeWithLog)
 import Prelude
 import Proto.SseStatus (SseStatus(..))
 
-createRequester
-  :: forall req resp
-   . Show req
-  => Show resp
-  => String
-  -> String
-  -> (req -> Aff resp)
-  -> Effect
-       { requestEvent :: Event req
-       , requestPush :: req -> Effect Unit
-       , responseEvent :: Event resp
-       }
-createRequester requestLabel responseLabel request = do
-  { event: requestEvent, push: requestPush } <- create
-  { event: responseEvent, push: responsePush } <- create
-
-  _ <- subscribeWithLog requestEvent requestLabel \req -> do
-    launchAff_ do
-      resp <- request req
-      liftEffect $ pushWithLog responsePush responseLabel resp
-
-  pure { requestEvent, requestPush, responseEvent }
-
-createColdWarmRequester
+createFRP
   :: forall resp
    . Show resp
   => String
@@ -51,7 +26,7 @@ createColdWarmRequester
        { requestPush :: Unit -> Effect Unit
        , responseEvent :: Event (Either String resp)
        }
-createColdWarmRequester route decode notifyEvent = do
+createFRP route decode notifyEvent = do
   { event: requestEvent, push: requestPush } <- create
   { event: responseEvent, push: responsePush } <- create
 
@@ -75,4 +50,4 @@ createColdWarmRequester route decode notifyEvent = do
       Success -> pushWithLog requestPush ("[" <> logRoute <> "] request") unit
       _ -> pure unit
 
-  pure { requestPush: requestPush , responseEvent }
+  pure { requestPush, responseEvent }

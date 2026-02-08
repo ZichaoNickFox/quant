@@ -5,6 +5,7 @@ import Test.Hspec
 
 import qualified Tests.Architecture.ArchitectureTestLayoutBoundarySpec
 import qualified Tests.Architecture.ControllerBoundarySpec
+import qualified Tests.Architecture.DependencyInstallBoundarySpec
 import qualified Tests.Architecture.NamingBoundarySpec
 import qualified Tests.Architecture.ProtocolBoundarySpec
 import qualified Tests.Architecture.PurescriptStyleAndFRPBoundarySpec
@@ -17,6 +18,7 @@ tests :: Spec
 tests = do
   Tests.Architecture.ArchitectureTestLayoutBoundarySpec.tests
   Tests.Architecture.ControllerBoundarySpec.tests
+  Tests.Architecture.DependencyInstallBoundarySpec.tests
   Tests.Architecture.NamingBoundarySpec.tests
   Tests.Architecture.ProtocolBoundarySpec.tests
   Tests.Architecture.PurescriptStyleAndFRPBoundarySpec.tests

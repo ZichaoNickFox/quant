@@ -12,6 +12,10 @@ Legend: `[x]` = has architecture test case, `[ ]` = no architecture test case ye
 
 1. [x] Architecture specs must stay flattened directly under `Tests/Architecture/` (no nested subfolders for specs).
 
+## Dependency Installation Constraints
+
+1. [x] Tool/dependency installation commands must be managed in Nix files, not runtime scripts (for example: `run`, `test`, `e2e`, `smoke`, `push`).
+
 ## Controller Constraints
 
 1. [ ] `PageController` is the only controller allowed to render HTML shell pages.
@@ -29,8 +33,8 @@ Legend: `[x]` = has architecture test case, `[ ]` = no architecture test case ye
 
 ## FRP Constraints
 
-1. [x] In the FRP system, purs files must use `createFRP` as the subnetwork creation interface name.
-2. [x] In FRP subnetwork files, declaration order must be: `Events` first; then `Config` if present; then `createFRP` if present.
+1. [x] In `purescript/src`, creation interfaces must use `createFRP` naming.
+2. [x] In `purescript/src` files that define `createFRP`, `Events` and `Config` must be declared above `createFRP` (and `Events` must stay above `Config` if both exist).
 
 ## Protocol Constraints
 

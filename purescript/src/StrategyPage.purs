@@ -55,8 +55,8 @@ renderStrategyShell strategyOwnerId strategyTitle = do
   """)
   pure unit
 
-createPageStrategyTree :: Effect Unit
-createPageStrategyTree = do
+initPageStrategyTree :: Effect Unit
+initPageStrategyTree = do
   treeWidget <- TreeWidget.createFRP "strategy" "[data-tree-root][data-owner-type='strategy']"
   cellsWidget <- CellsWidget.createFRP
     { ownerType: "strategy"
@@ -97,5 +97,5 @@ createFRP initEvent _notifyEvent = do
             Nothing -> ""
       liftEffect do
         renderStrategyShell strategyOwnerId "策略"
-        createPageStrategyTree
+        initPageStrategyTree
   pure unit

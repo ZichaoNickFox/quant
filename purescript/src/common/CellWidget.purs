@@ -255,7 +255,7 @@ appendLightweightChartIfNeeded doc updateCard cell = do
     setAttribute "class" "border rounded mb-2" chartEl
     setAttribute "style" "height: 320px;" chartEl
     _ <- appendChild (toNode chartEl) (toNode updateCard)
-    chart <- LightweightCharts.createChart chartEl
+    chart <- LightweightCharts.initChart chartEl
     series <- LightweightCharts.addCandlestickSeries chart
     for_ cell.content \contentJson ->
       when (contentJson /= "") do

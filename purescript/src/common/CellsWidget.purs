@@ -31,6 +31,7 @@ import Effect.Exception (throw)
 import Effect.Ref as Ref
 import FRP as FRP
 import FRP.Component.List as ListWidget
+import FRP.Requester.Requester as Requester
 import Prelude
 import Web.DOM.Document (createElement)
 import Web.DOM.Element (setAttribute, toEventTarget, toNode)
@@ -75,7 +76,7 @@ createFRP config = do
   currentNodeRef <- Ref.new (Nothing :: Maybe TreeNodeWidget.TreeNodePayload)
   refreshSeqRef <- Ref.new 0
   mutationSeqRef <- Ref.new 0
-  requestRequester <- FRP.createRequester
+  requestRequester <- Requester.createFRP
     ("[Cells " <> config.ownerType <> "] request req")
     ("[Cells " <> config.ownerType <> "] request resp")
     \payload -> do
@@ -86,7 +87,7 @@ createFRP config = do
         pure n'
       cells <- requestCells config.ownerType payload.ownerId seq
       pure (Tuple payload cells)
-  createRequester <- FRP.createRequester
+  createRequester <- Requester.createFRP
     ("[Cells " <> config.ownerType <> "] create req")
     ("[Cells " <> config.ownerType <> "] create resp")
     \ownerId -> do
@@ -96,7 +97,7 @@ createFRP config = do
         Ref.write n' mutationSeqRef
         pure n'
       requestCreate config.ownerType ownerId
-  createAtRequester <- FRP.createRequester
+  createAtRequester <- Requester.createFRP
     ("[Cells " <> config.ownerType <> "] create-at req")
     ("[Cells " <> config.ownerType <> "] create-at resp")
     \input -> do
@@ -106,7 +107,7 @@ createFRP config = do
         Ref.write n' mutationSeqRef
         pure n'
       requestCreateAt config.ownerType input
-  updateRequester <- FRP.createRequester
+  updateRequester <- Requester.createFRP
     ("[Cells " <> config.ownerType <> "] update req")
     ("[Cells " <> config.ownerType <> "] update resp")
     \input -> do
@@ -116,7 +117,7 @@ createFRP config = do
         Ref.write n' mutationSeqRef
         pure n'
       requestUpdate input
-  deleteRequester <- FRP.createRequester
+  deleteRequester <- Requester.createFRP
     ("[Cells " <> config.ownerType <> "] delete req")
     ("[Cells " <> config.ownerType <> "] delete resp")
     \cellId -> do
@@ -126,7 +127,7 @@ createFRP config = do
         Ref.write n' mutationSeqRef
         pure n'
       requestDelete cellId
-  moveRequester <- FRP.createRequester
+  moveRequester <- Requester.createFRP
     ("[Cells " <> config.ownerType <> "] move req")
     ("[Cells " <> config.ownerType <> "] move resp")
     \input -> do

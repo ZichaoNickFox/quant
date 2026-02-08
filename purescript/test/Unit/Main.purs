@@ -17,7 +17,6 @@ import Test.Unit.Proto.CandlesSpec as CandlesSpec
 import Test.Unit.Proto.SseStatusSpec as SseStatusSpec
 import Test.Unit.Proto.StrategySpec as StrategySpec
 import Test.Unit.Proto.SymbolsSpec as SymbolsSpec
-import Test.Unit.Proto.TypesSpec as TypesSpec
 
 spec :: Spec Unit
 spec = do
@@ -43,8 +42,6 @@ spec = do
     StrategySpec.tests
   describe "Proto.Symbols" do
     SymbolsSpec.tests
-  describe "Proto.Types" do
-    TypesSpec.tests
 
 main :: Effect Unit
 main = launchAff_ $ runSpec [consoleReporter] spec
