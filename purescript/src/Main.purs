@@ -1,18 +1,17 @@
 module Main where
 
-import Prelude
-
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
+
 import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
+import DataPage as DataPage
 import Effect (Effect)
 import FFI.SSE (attachEventSource)
 import FRP as FRP
-import DataPage as DataPage
-import NotePage as NotePage
+import Prelude
+import Proto.SseStatus (SseStatus, decodeMaybeSseStatus)
 import StrategyPage as StrategyPage
-import Proto.SseStatus (SseStatus(..), sseStatusFromString)
+import Web.DOM.Element (getAttribute)
 import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.Event.EventTarget (addEventListener, eventListener)
 import Web.HTML (window)
@@ -29,15 +28,7 @@ main = do
   -- subscribe
   _ <- FRP.subscribeWithLog domEvent "[dom]" \_ -> do
     notifyEvent <- bindNotifyEvent
-    DataPage.createFRP beginEvent notifyEvent
-    win <- window
-    doc <- document win
-    hasNoteTree <- hasSelector doc "[data-tree-root][data-owner-type='note']"
-    when hasNoteTree do
-      NotePage.createFRP beginEvent notifyEvent
-    hasStrategyTree <- hasSelector doc "[data-tree-root][data-owner-type='strategy']"
-    when hasStrategyTree do
-      StrategyPage.createFRP beginEvent notifyEvent
+    mountCurrentPage beginEvent notifyEvent
     FRP.pushWithLog beginPush "[begin]" unit
     pure unit
   _ <- FRP.subscribeWithLog beginEvent "[begin]" \_ -> do
@@ -47,6 +38,22 @@ main = do
   doc <- document win
   bindDomEvent doc domPush
   pure unit
+
+mountCurrentPage :: FRP.Event Unit -> FRP.Event SseStatus -> Effect Unit
+mountCurrentPage beginEvent notifyEvent = do
+  win <- window
+  doc <- document win
+  mRoot <- querySelector (QuerySelector "#app-root[data-app-page]") (HTMLDoc.toParentNode doc)
+  case mRoot of
+    Nothing -> pure unit
+    Just root -> do
+      mPage <- getAttribute "data-app-page" root
+      case mPage of
+        Just "data" -> DataPage.createFRP beginEvent notifyEvent
+        Just "strategy" -> StrategyPage.createFRP beginEvent notifyEvent
+        Just "backtest" -> DataPage.renderBacktestShell
+        Just "runtime" -> DataPage.renderRuntimeShell
+        _ -> pure unit
 
 bindDomEvent :: HTMLDoc.HTMLDocument -> (Unit -> Effect Unit) -> Effect Unit
 bindDomEvent doc domPush = do
@@ -63,18 +70,7 @@ bindNotifyEvent = do
     case jsonParser raw of
       Left _ -> pure unit
       Right json ->
-        case (decodeJson json :: Either _ { status :: String, reason :: Maybe String }) of
-          Right payload ->
-            case sseStatusFromString payload.status of
-              Just (Failed _) -> push (Failed (fromMaybe "" payload.reason))
-              Just v -> push v
-              Nothing -> pure unit
-          Left _ -> pure unit
+        case decodeMaybeSseStatus json of
+          Just status -> push status
+          Nothing -> pure unit
   pure event
-
-hasSelector :: HTMLDoc.HTMLDocument -> String -> Effect Boolean
-hasSelector doc selector = do
-  mNode <- querySelector (QuerySelector selector) (HTMLDoc.toParentNode doc)
-  pure case mNode of
-    Just _ -> true
-    Nothing -> false

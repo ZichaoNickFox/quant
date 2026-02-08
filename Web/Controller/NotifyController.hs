@@ -10,7 +10,7 @@ import           Network.Wai (responseStream)
 import           System.Timeout (timeout)
 import           IHP.Controller.Response (respondAndExit)
 import           Web.Prelude
-import           Web.Service.Infrastructure.NotifyHub
+import           Web.Service.ColdWarm.Infrastructure.NotifyHub
 import           Web.Types
 
 instance Controller NotifyController where

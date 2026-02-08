@@ -12,7 +12,7 @@ import Data.Argonaut.Core as J
 import Data.Argonaut.Decode as D
 import Data.Array as A
 import Data.Either (Either(..))
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
@@ -22,10 +22,11 @@ import Effect.Exception (throw)
 import Effect.Ref as Ref
 import Foreign.Object as FO
 import FRP as FRP
-import FRP.Component.Tree as Tree
 import FRP.Component.Tree (MoveDir(..), TreeUpdatePatch, movePatches)
+import FRP.Component.Tree as Tree
 import Prelude
-import Web.DOM.Element (Element, getAttribute)
+import Web.DOM.Element (Element, getAttribute, setAttribute, toNode)
+import Web.DOM.Node (setTextContent)
 import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.HTML (window)
 import Web.HTML.HTMLDocument as HTMLDoc
@@ -50,16 +51,14 @@ createFRP ownerType selector = do
 
 buildCreateUrl :: String -> String -> String -> String
 buildCreateUrl ownerType ownerId nodeId =
-  let base = "/TreeCreate?ownerType=" <> ownerType
-        <> "&ownerId=" <> ownerId
-        <> "&nodeType=file&name=NewNode"
+  let base = "/StrategyTreeCreate?strategyId=" <> ownerId
   in if nodeId == ""
       then base
       else base <> "&parentTreeId=" <> nodeId
 
 buildUpdateUrl :: TreeUpdatePatch -> String
 buildUpdateUrl patch =
-  let base = "/TreeUpdate?treeId=" <> patch.externalId <> "&nodeOrder=" <> show patch.nodeOrder
+  let base = "/StrategyTreeUpdate?treeId=" <> patch.externalId <> "&nodeOrder=" <> show patch.nodeOrder
   in case patch.parentExternalId of
       Just pid -> base <> "&parentTreeId=" <> pid
       Nothing -> base
@@ -69,11 +68,20 @@ callVoidAff url = do
   _ <- AX.get RF.ignore url
   pure unit
 
+requestCreatedStrategyId :: Aff (Maybe { id :: String, name :: String })
+requestCreatedStrategyId = do
+  response <- AX.get RF.json "/StrategyCreate"
+  pure case response of
+    Left _ -> Nothing
+    Right ok ->
+      case D.decodeJson ok.body :: Either D.JsonDecodeError { id :: String, name :: String } of
+        Right strategy -> Just strategy
+        Left _ -> Nothing
+
 decodeNode :: J.Json -> Maybe (Tree.TreeNode TreeNodeWidget.TreeNodePayload)
 decodeNode json = do
   obj <- J.toObject json
   nodeId <- readField ["id"] obj
-  let name = fromMaybe "" (readOptionalField ["name"] obj)
   ownerId <- readField ["owner_id", "ownerId"] obj
   nodeType <- readField ["node_type", "nodeType"] obj
   nodeOrder <- readField ["node_order", "nodeOrder"] obj
@@ -83,7 +91,7 @@ decodeNode json = do
     , nodeType
     , parentExternalId
     , nodeOrder
-    , payload: { ownerId, name }
+    , payload: { ownerId, name: "" }
     }
 
 firstPresent :: Array String -> FO.Object J.Json -> Maybe J.Json
@@ -126,7 +134,7 @@ readOptionalField keys obj =
 
 requestTreeNodes :: String -> String -> Int -> Aff (Array (Tree.TreeNode TreeNodeWidget.TreeNodePayload))
 requestTreeNodes ownerType ownerId refreshSeq =
-  let url = "/TreeRead?ownerType=" <> ownerType <> "&ownerId=" <> ownerId <> "&r=" <> show refreshSeq
+  let url = "/StrategyTreeRead?strategyId=" <> ownerId <> "&r=" <> show refreshSeq
   in do
   response <- AX.get RF.json url
   pure $ case response of
@@ -142,10 +150,11 @@ setupTreeRoot
   -> Effect Events
 setupTreeRoot ownerType rootEl = do
   mOwnerId <- getAttribute "data-owner-id" rootEl
-  let ownerId = fromMaybe "" mOwnerId
+  ownerIdRef <- Ref.new (fromMaybe "" mOwnerId)
+  let rootName = if ownerType == "strategy" then "策略" else ownerType
   handle <- Tree.createFRP rootEl []
     { createNodeFRP: TreeNodeWidget.createFRP
-    , rootName: ownerType
+    , rootName
     }
 
   -- Connect node events to tree events
@@ -175,6 +184,7 @@ setupTreeRoot ownerType rootEl = do
         let n' = n + 1
         Ref.write n' refreshSeqRef
         pure n'
+      ownerId <- liftEffect (Ref.read ownerIdRef)
       requestTreeNodes ownerType ownerId seq
 
   _ <- FRP.subscribe refreshEvent \_ -> requestRequester.requestPush unit
@@ -183,11 +193,27 @@ setupTreeRoot ownerType rootEl = do
     refresh
   _ <- FRP.subscribe handle.onAddChildSubs \nodeId ->
     launchAff_ do
-      callVoidAff (buildCreateUrl ownerType ownerId nodeId)
-      liftEffect refresh
+      ownerId <- liftEffect (Ref.read ownerIdRef)
+      if ownerType == "strategy" && ownerId == "" && nodeId == "" then do
+        created <- requestCreatedStrategyId
+        case created of
+          Nothing -> pure unit
+          Just strategy ->
+            liftEffect do
+              let newOwnerId = strategy.id
+              Ref.write newOwnerId ownerIdRef
+              setAttribute "data-owner-id" newOwnerId rootEl
+              win <- window
+              doc <- document win
+              mCellOwnerId <- querySelector (QuerySelector "[data-cell-create-owner-id='1']") (HTMLDoc.toParentNode doc)
+              traverse_ (setAttribute "value" newOwnerId) mCellOwnerId
+              refresh
+      else do
+        callVoidAff (buildCreateUrl ownerType ownerId nodeId)
+        liftEffect refresh
   _ <- FRP.subscribe handle.onDeleteSubs \nodeId ->
     launchAff_ do
-      callVoidAff ("/TreeDelete?externalId=" <> nodeId)
+      callVoidAff ("/StrategyTreeDelete?treeId=" <> nodeId)
       liftEffect refresh
   _ <- FRP.subscribe handle.onMoveUpSubs \(Tuple nodeId nodes) ->
     launchAff_ do

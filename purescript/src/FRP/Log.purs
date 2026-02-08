@@ -3,11 +3,11 @@ module FRP.Log
   , subscribeWithLog
   ) where
 
-import Prelude
-
 import Effect (Effect)
+
 import Effect.Console (log)
 import FRP.Event (Event, subscribe)
+import Prelude
 
 pushWithLog :: forall a. Show a => (a -> Effect Unit) -> String -> a -> Effect Unit
 pushWithLog push label value = do

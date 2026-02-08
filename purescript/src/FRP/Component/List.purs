@@ -1,17 +1,25 @@
 module FRP.Component.List
   ( Config
-  , Events
   , createFRP
+  , Events
   ) where
 
-import Prelude
-
 import Data.Array as A
+
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Ref as Ref
 import FRP as FRP
+import Prelude
+
+type Events item externalId itemEvents =
+  { setItemsPush :: Array item -> Effect Unit
+  , onItemsChanged :: FRP.Event (Array item)
+  , onItemCreatedSubs :: FRP.Event itemEvents
+  , moveUpPush :: externalId -> Effect Unit    -- External id must be unique
+  , moveDownPush :: externalId -> Effect Unit  -- External id must be unique
+  }
 
 type Config item externalId itemEvents =
   { getItemId :: item -> externalId  -- IMPORTANT: Must return unique id for each item
@@ -22,14 +30,6 @@ type ListItem item externalId =
   { externalId :: externalId  -- External id (must be unique)
   , order :: Int
   , payload :: item
-  }
-
-type Events item externalId itemEvents =
-  { setItemsPush :: Array item -> Effect Unit
-  , onItemsChanged :: FRP.Event (Array item)
-  , onItemCreatedSubs :: FRP.Event itemEvents
-  , moveUpPush :: externalId -> Effect Unit    -- External id must be unique
-  , moveDownPush :: externalId -> Effect Unit  -- External id must be unique
   }
 
 createFRP :: forall item externalId itemEvents. Eq externalId => Config item externalId itemEvents -> Effect (Events item externalId itemEvents)

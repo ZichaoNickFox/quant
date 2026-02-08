@@ -1,17 +1,17 @@
 module FRP.Component.Input
   ( InputAction(..)
   , InputOutput(..)
-  , deriveInputOutput
   , createInput
+  , deriveInputOutput
   ) where
 
-import Prelude
-
 import Data.Filterable (filterMap)
+
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import FRP.Event (Event, create, mapAccum, subscribe)
+import Prelude
 
 data InputAction
   = StartEdit String

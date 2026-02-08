@@ -10,9 +10,8 @@ module FRP.Component.Tree
   , movePatches
   ) where
 
-import Prelude
-
 import Data.Array as A
+
 import Data.Filterable (filterMap)
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -21,6 +20,7 @@ import Effect (Effect)
 import Effect.Ref as Ref
 import FRP as FRP
 import FRP.Combinator as C
+import Prelude
 import Prim.Row as Row
 import Web.DOM.Document (createElement)
 import Web.DOM.Element (Element, toNode)
@@ -125,12 +125,7 @@ createFRP rootEl initialNodes config = do
   { event: onNodeSelected, push: selectedNodePush } <- FRP.create
   selectedExternalIdRef <- Ref.new Nothing
   currentNodesRef <- Ref.new ([] :: Array (TreeNode payload))
-  _ <- FRP.subscribe onNodeSelected \node -> do
-    Ref.write (Just node.externalId) selectedExternalIdRef
-  let setNodes nodes = do
-        Ref.write nodes currentNodesRef
-        nodesPush nodes
-        selectedExternalId <- Ref.read selectedExternalIdRef
+  let renderNodes nodes selectedExternalId = do
         let renderChildren container allNodes parentId depth = do
               let children = siblings allNodes parentId
                   lastIndex = A.length children - 1
@@ -169,12 +164,21 @@ createFRP rootEl initialNodes config = do
               _ <- appendChild (toNode listWrap) (toNode rootEl)
               pure unit
         renderTree
+  let setNodes nodes = do
+        Ref.write nodes currentNodesRef
+        nodesPush nodes
+        selectedExternalId <- Ref.read selectedExternalIdRef
+        renderNodes nodes selectedExternalId
         case selectedExternalId of
           Nothing -> pure unit
           Just nodeId ->
             case A.find (\n -> n.externalId == nodeId) nodes of
               Nothing -> pure unit
               Just selectedNode -> selectedNodePush selectedNode
+  _ <- FRP.subscribe onNodeSelected \node -> do
+    Ref.write (Just node.externalId) selectedExternalIdRef
+    nodes <- Ref.read currentNodesRef
+    renderNodes nodes (Just node.externalId)
   setNodes initialNodes
   let reloadPush = inputPush ActionReload
   let addChildPush nodeId = inputPush (ActionAddChild nodeId)

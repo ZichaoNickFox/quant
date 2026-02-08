@@ -1,24 +1,25 @@
 module Common.CellsWidget
-  ( CellRow
-  , CellUpdateInput
-  , Events
-  , createFRP
-  , buildCellsReadUrl
+  ( buildCellsReadUrl
   , buildCellsReadUrlWithSeq
-  , withNonce
+  , CellRow
+  , CellUpdateInput
+  , createFRP
   , decodeCellsFromJson
+  , Events
+  , selectedOwnerId
+  , withNonce
   ) where
 
-import Prelude
-
 import Affjax.RequestBody as RB
+
 import Affjax.ResponseFormat as RF
 import Affjax.Web as AX
 import Common.CellWidget as CellWidget
+import Common.TreeNodeWidget as TreeNodeWidget
 import Data.Argonaut.Core as J
 import Data.Either (Either(..))
-import Data.FormURLEncoded as FUE
 import Data.Foldable (for_)
+import Data.FormURLEncoded as FUE
 import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.String.Pattern (Pattern(..))
@@ -29,12 +30,14 @@ import Effect.Class (liftEffect)
 import Effect.Exception (throw)
 import Effect.Ref as Ref
 import FRP as FRP
-import Common.TreeNodeWidget as TreeNodeWidget
-import FRP.Component.Tree as Tree
 import FRP.Component.List as ListWidget
-import Web.DOM.Element (toNode)
-import Web.DOM.Node (setTextContent)
+import Prelude
+import Web.DOM.Document (createElement)
+import Web.DOM.Element (setAttribute, toEventTarget, toNode)
+import Web.DOM.Node (appendChild, setTextContent)
 import Web.DOM.ParentNode (QuerySelector(..), querySelector)
+import Web.Event.Event (EventType(..))
+import Web.Event.EventTarget (addEventListener, eventListener)
 import Web.HTML (window)
 import Web.HTML.HTMLDocument as HTMLDoc
 import Web.HTML.HTMLInputElement as HTMLInput
@@ -63,7 +66,6 @@ type Events =
 
 createFRP
   :: { ownerType :: String
-     , detailTitlePrefix :: String
      }
   -> Effect Events
 createFRP config = do
@@ -84,16 +86,16 @@ createFRP config = do
         pure n'
       cells <- requestCells config.ownerType payload.ownerId seq
       pure (Tuple payload cells)
-  fallbackRequestRequester <- FRP.createRequester
-    ("[Cells " <> config.ownerType <> "] fallback request req")
-    ("[Cells " <> config.ownerType <> "] fallback request resp")
+  createRequester <- FRP.createRequester
+    ("[Cells " <> config.ownerType <> "] create req")
+    ("[Cells " <> config.ownerType <> "] create resp")
     \ownerId -> do
-      seq <- liftEffect do
-        n <- Ref.read refreshSeqRef
+      _ <- liftEffect do
+        n <- Ref.read mutationSeqRef
         let n' = n + 1
-        Ref.write n' refreshSeqRef
+        Ref.write n' mutationSeqRef
         pure n'
-      requestCells config.ownerType ownerId seq
+      requestCreate config.ownerType ownerId
   createAtRequester <- FRP.createRequester
     ("[Cells " <> config.ownerType <> "] create-at req")
     ("[Cells " <> config.ownerType <> "] create-at resp")
@@ -138,9 +140,12 @@ createFRP config = do
   doc <- document win
   let doc' = HTMLDoc.toDocument doc
   mList <- querySelector (QuerySelector "[data-cell-list]") (HTMLDoc.toParentNode doc)
-  listEl <- case mList of
+  _ <- case mList of
     Nothing -> throw "CellsWidget: missing element for selector: [data-cell-list]"
     Just el -> pure el
+  ensureInsertCellButton config.ownerType \ownerId ->
+    createRequester.requestPush ownerId
+  setInsertCellButtonVisible config.ownerType false
   listHandle <- ListWidget.createFRP
     { getItemId: \cell -> cell.id
     , createItemFRP: CellWidget.createFRP doc' config.ownerType readCreateOwnerId
@@ -168,35 +173,45 @@ createFRP config = do
     pure unit
 
   _ <- FRP.subscribe loadByOwnerIdEvent \ownerId -> do
-    for_ ownerId \oid ->
-      Ref.write (Just { ownerId: oid, name: "" }) currentNodeRef
-    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+    Ref.write (map (\oid -> { ownerId: oid, name: "" }) ownerId) currentNodeRef
+    case ownerId of
+      Nothing -> do
+        setCreateOwnerId ""
+        listHandle.setItemsPush []
+        setCellTitleVisible true
+        setInsertCellButtonVisible config.ownerType false
+        renderedPush unit
+      Just _ ->
+        reloadCells currentNodeRef requestRequester.requestPush
 
   _ <- FRP.subscribe requestRequester.responseEvent \(Tuple payload cells) -> do
     setCreateOwnerId payload.ownerId
-    renderCellTitle (config.detailTitlePrefix <> payload.name)
     listHandle.setItemsPush cells
+    when (payload.name /= "") do
+      renderCellTitle payload.name
+    setCellTitleVisible true
+    setInsertCellButtonVisible config.ownerType (cells == [])
     renderedPush unit
 
-  _ <- FRP.subscribe fallbackRequestRequester.responseEvent \cells -> do
-    listHandle.setItemsPush cells
-    renderedPush unit
+  _ <- FRP.subscribe createRequester.responseEvent \created -> when created do
+    mutatedPush unit
+    reloadCells currentNodeRef requestRequester.requestPush
 
   _ <- FRP.subscribe createAtRequester.responseEvent \created -> when created do
     mutatedPush unit
-    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+    reloadCells currentNodeRef requestRequester.requestPush
 
   _ <- FRP.subscribe updateRequester.responseEvent \updated -> when updated do
     mutatedPush unit
-    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+    reloadCells currentNodeRef requestRequester.requestPush
 
   _ <- FRP.subscribe deleteRequester.responseEvent \deleted -> when deleted do
     mutatedPush unit
-    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+    reloadCells currentNodeRef requestRequester.requestPush
 
   _ <- FRP.subscribe moveRequester.responseEvent \moved -> when moved do
     mutatedPush unit
-    reloadCells config.ownerType currentNodeRef requestRequester.requestPush fallbackRequestRequester.requestPush
+    reloadCells currentNodeRef requestRequester.requestPush
 
   pure
     { loadByOwnerIdPush
@@ -213,6 +228,17 @@ requestCreateAt ownerType input = do
         , Tuple "position" (Just input.position)
         ]
   res <- AX.post_ "/CellCreateAt" (Just (RB.formURLEncoded body))
+  pure case res of
+    Left _ -> false
+    Right _ -> true
+
+requestCreate :: String -> String -> Aff Boolean
+requestCreate ownerType ownerId = do
+  let body = FUE.fromArray
+        [ Tuple "ownerType" (Just ownerType)
+        , Tuple "ownerId" (Just ownerId)
+        ]
+  res <- AX.post_ "/CellCreate" (Just (RB.formURLEncoded body))
   pure case res of
     Left _ -> false
     Right _ -> true
@@ -285,6 +311,14 @@ renderCellTitle title = do
   for_ mTitle \el ->
     setTextContent title (toNode el)
 
+setCellTitleVisible :: Boolean -> Effect Unit
+setCellTitleVisible visible = do
+  win <- window
+  doc <- document win
+  mTitle <- querySelector (QuerySelector "[data-cell-title]") (HTMLDoc.toParentNode doc)
+  for_ mTitle \el ->
+    setAttribute "style" (if visible then "display:block;" else "display:none;") el
+
 withNonce :: String -> Int -> String
 withNonce url seq =
   let sep = if String.contains (Pattern "?") url then "&" else "?"
@@ -299,16 +333,50 @@ readCreateOwnerId = do
     Just input -> HTMLInput.value input
     Nothing -> pure ""
 
+selectedOwnerId :: Maybe TreeNodeWidget.TreeNodePayload -> Maybe String
+selectedOwnerId mbNode = map _.ownerId mbNode
+
+ensureInsertCellButton :: String -> (String -> Effect Unit) -> Effect Unit
+ensureInsertCellButton ownerType onCreate = do
+  win <- window
+  doc <- document win
+  let root = HTMLDoc.toParentNode doc
+  let selector = "[data-cell-create][data-owner-type='" <> ownerType <> "']"
+  mCreateWrap <- querySelector (QuerySelector selector) root
+  for_ mCreateWrap \createWrap -> do
+    let btnSelector = "[data-cell-insert-first='1'][data-owner-type='" <> ownerType <> "']"
+    mBtn <- querySelector (QuerySelector btnSelector) root
+    case mBtn of
+      Just _ -> pure unit
+      Nothing -> do
+        btn <- createElement "button" (HTMLDoc.toDocument doc)
+        setAttribute "type" "button" btn
+        setAttribute "class" "btn btn-sm btn-outline-secondary mb-2" btn
+        setAttribute "data-cell-insert-first" "1" btn
+        setAttribute "data-owner-type" ownerType btn
+        setAttribute "style" "display:none;" btn
+        setTextContent "Insert Cell" (toNode btn)
+        onClick <- eventListener \_ -> do
+          ownerId <- readCreateOwnerId
+          when (ownerId /= "") (onCreate ownerId)
+        addEventListener (EventType "click") onClick false (toEventTarget btn)
+        _ <- appendChild (toNode btn) (toNode createWrap)
+        pure unit
+
+setInsertCellButtonVisible :: String -> Boolean -> Effect Unit
+setInsertCellButtonVisible ownerType visible = do
+  win <- window
+  doc <- document win
+  let root = HTMLDoc.toParentNode doc
+  let selector = "[data-cell-insert-first='1'][data-owner-type='" <> ownerType <> "']"
+  mBtn <- querySelector (QuerySelector selector) root
+  for_ mBtn \btn ->
+    setAttribute "style" (if visible then "display:inline-block;" else "display:none;") btn
+
 reloadCells
-  :: String
-  -> Ref.Ref (Maybe TreeNodeWidget.TreeNodePayload)
+  :: Ref.Ref (Maybe TreeNodeWidget.TreeNodePayload)
   -> (TreeNodeWidget.TreeNodePayload -> Effect Unit)
-  -> (String -> Effect Unit)
   -> Effect Unit
-reloadCells _ownerType currentNodeRef requestByNode requestByOwnerId = do
+reloadCells currentNodeRef requestByNode = do
   mbNode <- Ref.read currentNodeRef
-  case mbNode of
-    Just node -> requestByNode node
-    Nothing -> do
-      ownerId <- readCreateOwnerId
-      when (ownerId /= "") (requestByOwnerId ownerId)
+  for_ mbNode requestByNode

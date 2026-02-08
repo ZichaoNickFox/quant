@@ -65,10 +65,22 @@
             pkgs.python3
             pkgs.gcc
             pkgs.esbuild
+            pkgs.nodejs
+            pkgs.playwright-driver
           ];
           enterShell = ''
             # python
             echo "enterShell"
+            export PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
+            export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+            ensure_js_deps() {
+              if [ ! -d "node_modules/@playwright/test" ]; then
+                echo "[devenv] installing js deps (including @playwright/test) ..."
+                npm install --no-fund --no-audit
+              fi
+            }
+
             ensure_py_deps() {
               if ! "$VENV_PY" -c "import tushare, akshare" >/dev/null 2>&1; then
                 echo "[devenv] missing akshare/tushare, installing ..."
@@ -94,6 +106,7 @@
               source .venv/bin/activate
               ensure_py_deps
             fi
+            ensure_js_deps
           '';
 
           # Custom processes that don't appear in https://devenv.sh/reference/options/

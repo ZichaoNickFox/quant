@@ -1,23 +1,23 @@
 module FRP.Combinator
-  ( merge
-  , map
+  ( combineLatest2
   , filter
-  , scan
-  , combineLatest2
-  , withLatestFrom
+  , map
+  , merge
   , pairwise
+  , scan
   , take1
+  , withLatestFrom
   ) where
 
-import Prelude
-
 import Control.Alternative ((<|>))
+
 import Data.Either (Either(..))
 import Data.Filterable (filterMap)
 import Data.Functor as Functor
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import FRP.Event (Event, mapAccum)
+import Prelude
 
 -- Operators (thin wrappers over Event primitives).
 merge :: forall a. Event a -> Event a -> Event a

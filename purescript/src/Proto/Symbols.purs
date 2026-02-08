@@ -4,20 +4,21 @@ module Proto.Symbols where
 import Data.Argonaut.Aeson.Decode.Generic (genericDecodeAeson)
 import Data.Argonaut.Aeson.Encode.Generic (genericEncodeAeson)
 import Data.Argonaut.Aeson.Options as Argonaut
+import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode.Class (class DecodeJson, class DecodeJsonField, decodeJson)
 import Data.Argonaut.Encode.Class (class EncodeJson, encodeJson)
+import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
-import Data.Show.Generic (genericShow)
 import Data.Lens (Iso', Lens', Prism', lens, prism')
 import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
+import Data.Show.Generic (genericShow)
 import GHC.Types (List)
+import Prelude
 import Prim (Boolean, String)
 import Type.Proxy (Proxy(Proxy))
-
-import Prelude
 
 newtype SymbolInfo =
     SymbolInfo {
@@ -60,3 +61,15 @@ _APISymbolsResponse :: Iso' APISymbolsResponse { complete :: Boolean, symbols ::
 _APISymbolsResponse = _Newtype
 
 --------------------------------------------------------------------------------
+
+decodeMaybeSymbolInfo :: Json -> Maybe SymbolInfo
+decodeMaybeSymbolInfo json =
+  case decodeJson json of
+    Right v -> Just v
+    Left _ -> Nothing
+
+decodeMaybeAPISymbolsResponse :: Json -> Maybe APISymbolsResponse
+decodeMaybeAPISymbolsResponse json =
+  case decodeJson json of
+    Right v -> Just v
+    Left _ -> Nothing

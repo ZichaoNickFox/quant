@@ -1,17 +1,16 @@
 module Common.CellWidget
-  ( CellRow
-  , CellUpdateInput
-  , Events
-  , buildCellUpdateInput
+  ( buildCellUpdateInput
+  , CellRow
   , cellTypeOptions
-  , isChartCellType
+  , CellUpdateInput
   , createFRP
   , decodeCellsFromJson
+  , Events
+  , isChartCellType
   ) where
 
-import Prelude
-
 import Data.Argonaut.Core as J
+
 import Data.Argonaut.Decode as D
 import Data.Array as A
 import Data.Either (Either(..))
@@ -20,9 +19,10 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import FFI.LightweightCharts as LightweightCharts
+import Foreign.Object as FO
 import FRP as FRP
 import FRP.Component.TextArea as Textarea
-import Foreign.Object as FO
+import Prelude
 import Web.DOM.Document (Document, createElement)
 import Web.DOM.Element (Element, setAttribute, toEventTarget, toNode)
 import Web.DOM.Node (appendChild, setTextContent)
@@ -76,7 +76,7 @@ createFRP doc ownerType readOwnerId cell = do
     appendCellTypeOption doc typeSelect cell.cellType value label
 
   let contentText = fromMaybe "" cell.content
-  textAreaHandle <- Textarea.createTextArea doc
+  textAreaHandle <- Textarea.createFRP doc
     { name: "content"
     , className: "form-control mb-2"
     , rows: 1

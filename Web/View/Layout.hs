@@ -41,9 +41,6 @@ navHtml = [hsx|
           <a class="nav-link px-0 py-0" href={PageDataAction}>数据</a>
         </li>
         <li class="nav-item mr-3">
-          <a class="nav-link px-0 py-0" href={PageNoteAction}>笔记</a>
-        </li>
-        <li class="nav-item mr-3">
           <a class="nav-link px-0 py-0" href={PageStrategyAction}>策略</a>
         </li>
         <li class="nav-item mr-3">

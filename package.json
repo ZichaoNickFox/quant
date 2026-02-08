@@ -4,12 +4,15 @@
   "description": "This is an IHP (Integrated Haskell Platform) project with GitHub Actions for testing and deployment. For more information about IHP, see the [IHP Documentation](https://ihp.digitallyinduced.com/Guide/).",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "e2e": "playwright test --config Tests/E2E/playwright.config.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "lightweight-charts": "^5.0.9"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
   }
 }

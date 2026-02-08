@@ -1,17 +1,18 @@
 module Proto.SseStatus
   ( SseStatus(..)
-  , sseStatusToString
+  , decodeMaybeSseStatus
   , sseStatusFromString
+  , sseStatusToString
   ) where
 
-import Prelude
-
+import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (class DecodeJson, JsonDecodeError(..))
 import Data.Argonaut.Decode.Class (decodeJson)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (toLower)
+import Prelude
 
 data SseStatus
   = Success
@@ -62,3 +63,9 @@ instance decodeJsonSseStatus :: DecodeJson SseStatus where
           Just v -> Right v
           Nothing -> fromObj
       Left _ -> fromObj
+
+decodeMaybeSseStatus :: Json -> Maybe SseStatus
+decodeMaybeSseStatus json =
+  case decodeJson json of
+    Right v -> Just v
+    Left _ -> Nothing

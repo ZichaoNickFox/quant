@@ -1,15 +1,15 @@
 module FFI.LightweightCharts
-  ( Chart
+  ( addCandlestickSeries
   , CandlestickSeries
+  , Chart
   , createChart
-  , addCandlestickSeries
-  , setDataFromJson
   , fitContent
+  , setDataFromJson
   ) where
 
-import Prelude
-
 import Effect (Effect)
+
+import Prelude
 import Web.DOM.Element (Element)
 
 foreign import data Chart :: Type

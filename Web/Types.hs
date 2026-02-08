@@ -18,10 +18,10 @@ import           Web.Prelude
 data WebApplication = WebApplication deriving (Eq, Show)
 
 -- Controller
-data APIController = APICandlesAction | APISymbolsAction deriving (Eq, Show, Data)
+data ColdWarmController = APICandlesAction | APISymbolsAction deriving (Eq, Show, Data)
 data PageController
   = PageDataAction
-  | PageNoteAction
+  | PageStrategyCreateAction
   | PageStrategyAction
   | PageBacktestAction
   | PageRuntimeAction
@@ -34,21 +34,27 @@ data CellController
   | CellDeleteAction
   | CellReadAction
   deriving (Eq, Show, Data)
-data TreeController
-  = TreeCreateAction
-  | TreeUpdateAction
-  | TreeDeleteAction
-  | TreeReadAction
+data StrategyController
+  = StrategyCreateAction
+  | StrategyTreeCreateAction
+  | StrategyTreeDeleteAction
+  | StrategyTreeReadAction
+  | StrategyTreeUpdateAction
+  | StrategyReadAction
+  | StrategyUpdateAction
+  | StrategyDeleteAction
   deriving (Eq, Show, Data)
-data StaticController = StaticAction deriving (Eq, Show, Data)
+data BacktestController
+  = BacktestRunAction
+  deriving (Eq, Show, Data)
 data NotifyController = NotifyAction deriving (Eq, Show, Data)
 
 -- Route
-instance AutoRoute APIController
+instance AutoRoute ColdWarmController
 instance AutoRoute PageController
 instance AutoRoute CellController
-instance AutoRoute TreeController
-instance AutoRoute StaticController
+instance AutoRoute StrategyController
+instance AutoRoute BacktestController
 instance CanRoute NotifyController where
   parseRoute' = string "/sse/notify" <* endOfInput >> pure NotifyAction
 instance HasPath NotifyController where

@@ -1,19 +1,19 @@
 module FRP.Component.TextArea
-  ( TextAreaConfig
+  ( autoResize
+  , autoResizeDeferred
+  , createFRP
+  , TextAreaConfig
   , TextAreaEvents
   , TextAreaHandle
-  , createTextArea
-  , autoResize
-  , autoResizeDeferred
   ) where
 
-import Effect (Effect)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Effect (Effect)
+import Prelude
 import Web.DOM.Document (Document, createElement)
 import Web.DOM.Element (Element, setAttribute, toEventTarget)
 import Web.Event.Event (EventType(..))
 import Web.Event.EventTarget (addEventListener, eventListener)
-import Prelude
 import Web.HTML.HTMLTextAreaElement (HTMLTextAreaElement)
 import Web.HTML.HTMLTextAreaElement as HTMLTextArea
 
@@ -38,8 +38,8 @@ type TextAreaHandle =
   , init :: Effect Unit
   }
 
-createTextArea :: Document -> TextAreaConfig -> Effect TextAreaHandle
-createTextArea doc cfg = do
+createFRP :: Document -> TextAreaConfig -> Effect TextAreaHandle
+createFRP doc cfg = do
   el <- createElement "textarea" doc
   let events = fromMaybe { onInit: pure unit, onInput: pure unit } cfg.events
   setAttribute "name" cfg.name el

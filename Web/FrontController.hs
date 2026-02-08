@@ -1,10 +1,11 @@
 module Web.FrontController where
 
-import Web.Controller.APIController
-import Web.Controller.PageController
+import Web.Controller.ColdWarmController
+import Web.Controller.BacktestController
 import Web.Controller.CellController
-import Web.Controller.TreeController
 import Web.Controller.NotifyController
+import Web.Controller.PageController
+import Web.Controller.StrategyController
 import Web.Prelude
 import Web.Types
 import Web.View.Layout
@@ -12,10 +13,11 @@ import Web.View.Layout
 instance FrontController WebApplication where
   controllers =
     [ startPage PageStrategyAction
-    , parseRoute @APIController
+    , parseRoute @ColdWarmController
+    , parseRoute @BacktestController
     , parseRoute @PageController
     , parseRoute @CellController
-    , parseRoute @TreeController
+    , parseRoute @StrategyController
     , parseRoute @NotifyController
     ]
 

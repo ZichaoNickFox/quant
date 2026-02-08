@@ -7,4 +7,4 @@ if [[ -z "${DEVENV_IN_DIRENV_SHELL:-}" ]]; then
   exec direnv exec . "$0" "$@"
 fi
 
-runghc $(make print-ghc-extensions) -i. -ibuild -iConfig Smokes/Main.hs
+runghc $(make print-ghc-extensions) -i. -ibuild -iConfig Tests/Smoke/Main.hs

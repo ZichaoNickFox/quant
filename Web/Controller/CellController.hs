@@ -9,23 +9,22 @@ instance Controller CellController where
   action CellCreateAction = do
     let ownerType = param @CellOwnerType "ownerType"
         ownerId = param @UUID "ownerId"
-    _ <- CellRepo.createCell ownerType ownerId
-    redirectBack
+    cell <- CellRepo.createCell ownerType ownerId
+    renderJson (cellToJson cell)
 
   action CellCreateAtAction = do
     let ownerType = param @CellOwnerType "ownerType"
         ownerId = param @UUID "ownerId"
         anchorCellId = Id (param @UUID "anchorCellId") :: Id Cell
         position = param @Text "position"
-    _ <- if position == "above"
+    cell <- if position == "above"
       then CellRepo.createCellAbove ownerType ownerId anchorCellId
       else CellRepo.createCellBelow ownerType ownerId anchorCellId
-    redirectBack
+    renderJson (cellToJson cell)
 
   action CellReadAction = do
     let ownerType = param @CellOwnerType "ownerType"
         ownerId = param @UUID "ownerId"
-    CellRepo.ensureFirstCell ownerType ownerId
     cells <- CellRepo.loadCells ownerType ownerId
     renderJson (map cellToJson cells)
 
@@ -34,12 +33,12 @@ instance Controller CellController where
         cellType = param @CellType "cellType"
         content = paramOrNothing @Text "content"
     CellRepo.updateCell cellId cellType content
-    redirectBack
+    renderJson (A.object [ "ok" A..= True ])
 
   action CellDeleteAction = do
     let cellId = Id (param @UUID "cellId") :: Id Cell
     CellRepo.deleteCellById cellId
-    redirectBack
+    renderJson (A.object [ "ok" A..= True ])
 
   action CellMoveAction = do
     let cellId = Id (param @UUID "cellId") :: Id Cell
@@ -47,7 +46,7 @@ instance Controller CellController where
     if direction == "up"
       then CellRepo.moveCellUp cellId
       else CellRepo.moveCellDown cellId
-    redirectBack
+    renderJson (A.object [ "ok" A..= True ])
 
 cellToJson :: Cell -> A.Value
 cellToJson cell =

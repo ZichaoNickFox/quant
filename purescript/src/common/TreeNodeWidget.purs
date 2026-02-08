@@ -1,12 +1,12 @@
 module Common.TreeNodeWidget
-  ( TreeNodePayload
-  , renderNodeName
-  , renderNodeEditor
-  , createFRP
+  ( createFRP
   , makeButton
+  , renderNodeEditor
+  , renderNodeName
+  , TreeNodePayload
   ) where
 
-import Prelude
+import Data.Foldable (for_)
 
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
@@ -14,17 +14,17 @@ import Effect.Ref as Ref
 import FFI.Keyboard (isEnterKey)
 import FRP as FRP
 import FRP.Component.Input as Input
-import Data.Foldable (for_)
+import Prelude
 import Web.DOM.Document (Document, createElement)
-import Web.HTML (window)
-import Web.HTML.HTMLDocument as HTMLDoc
-import Web.HTML.Window (document)
 import Web.DOM.Element (Element, setAttribute, toEventTarget, toNode)
 import Web.DOM.Node (appendChild, setTextContent)
-import Web.Event.Event (EventType(..))
+import Web.Event.Event (EventType(..), stopPropagation)
 import Web.Event.EventTarget (addEventListener, eventListener)
+import Web.HTML (window)
+import Web.HTML.HTMLDocument as HTMLDoc
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.HTMLInputElement as HTMLInput
+import Web.HTML.Window (document)
 
 type TreeNodePayload =
   { ownerId :: String
@@ -48,6 +48,8 @@ renderNodeName
   :: forall node
    . Document
   -> Element
+  -> Int
+  -> Int
   -> { externalId :: String
      , parentExternalId :: Maybe String
      , nodeOrder :: Int
@@ -64,17 +66,23 @@ renderNodeName
      }
   -> Maybe String
   -> Effect Unit
-renderNodeName doc container node handlers selectedNodeId = do
+renderNodeName doc container depth index node handlers selectedNodeId = do
   setTextContent "" (toNode container)
   nameSpan <- createElement "span" doc
-  let displayName = if node.payload.name == "" then "NewNode" else node.payload.name
+  let displayName = if node.payload.name == ""
+        then "NewNode"
+        else node.payload.name
   setTextContent displayName (toNode nameSpan)
   let selectedStyle = case selectedNodeId of
-        Just nodeId | nodeId == node.externalId -> "font-weight:700; text-decoration:underline;"
+        Just nodeId | nodeId == node.externalId -> "font-weight:700;"
         _ -> ""
   setAttribute "style" ("cursor:pointer;" <> selectedStyle) nameSpan
-  onClick <- eventListener \_ -> handlers.onSelect node
-  onDoubleClick <- eventListener \_ -> renderNodeEditor doc container node handlers selectedNodeId
+  onClick <- eventListener \ev -> do
+    stopPropagation ev
+    handlers.onSelect node
+  onDoubleClick <- eventListener \ev -> do
+    stopPropagation ev
+    renderNodeEditor doc container depth index node handlers selectedNodeId
   addEventListener (EventType "click") onClick false (toEventTarget nameSpan)
   addEventListener (EventType "dblclick") onDoubleClick false (toEventTarget nameSpan)
   _ <- appendChild (toNode nameSpan) (toNode container)
@@ -84,13 +92,15 @@ renderNodeEditor
   :: forall node
    . Document
   -> Element
+  -> Int
+  -> Int
   -> { externalId :: String, parentExternalId :: Maybe String, nodeOrder :: Int, payload :: TreeNodePayload | node }
   -> { onRename :: String -> String -> Maybe String -> Int -> Effect Unit
      , onSelect :: { externalId :: String, parentExternalId :: Maybe String, nodeOrder :: Int, payload :: TreeNodePayload | node } -> Effect Unit
      }
   -> Maybe String
   -> Effect Unit
-renderNodeEditor doc container node handlers selectedNodeId = do
+renderNodeEditor doc container depth index node handlers selectedNodeId = do
   setTextContent "" (toNode container)
   inputEl <- createElement "input" doc
   setAttribute "type" "text" inputEl
@@ -99,7 +109,7 @@ renderNodeEditor doc container node handlers selectedNodeId = do
   _ <- appendChild (toNode inputEl) (toNode container)
 
   case HTMLInput.fromElement inputEl of
-    Nothing -> renderNodeName doc container node handlers selectedNodeId
+    Nothing -> renderNodeName doc container depth index node handlers selectedNodeId
     Just input -> do
       { actionPush: inputActionPush, startedEvent, confirmedEvent } <- Input.createInput node.payload.name
       closedRef <- Ref.new false
@@ -111,9 +121,9 @@ renderNodeEditor doc container node handlers selectedNodeId = do
         when (not closed) do
           Ref.write true closedRef
           if newName == node.payload.name || newName == ""
-            then renderNodeName doc container node handlers selectedNodeId
+            then renderNodeName doc container depth index node handlers selectedNodeId
             else do
-              renderNodeName doc container (node { payload = node.payload { name = newName } }) handlers selectedNodeId
+              renderNodeName doc container depth index (node { payload = node.payload { name = newName } }) handlers selectedNodeId
               handlers.onRename node.externalId newName node.parentExternalId node.nodeOrder
       inputActionPush (Input.StartEdit node.payload.name)
 
@@ -182,12 +192,20 @@ createFRP ctx = do
       pure fallbackRow
     Just node -> do
       let visibility = moveButtonVisibility ctx.index ctx.lastIndex
+      let isSelected = case ctx.selectedExternalId of
+            Just selectedId -> selectedId == node.externalId
+            Nothing -> false
+      let rowHighlightStyle = if isSelected
+            then "background:#e7f1ff; border:1px solid #90c2ff; border-radius:6px; padding:2px 4px;"
+            else ""
       nodeRow <- createElement "div" doc
-      setAttribute "style" ("display:flex; align-items:center; gap:4px; margin:4px 0; margin-left:" <> show (ctx.depth * 14) <> "px;") nodeRow
+      setAttribute "style" ("display:flex; align-items:center; gap:4px; margin:4px 0; margin-left:" <> show (ctx.depth * 14) <> "px;" <> rowHighlightStyle) nodeRow
+      rowClick <- eventListener \_ -> pushSelect node
+      addEventListener (EventType "click") rowClick false (toEventTarget nodeRow)
 
       nameWrap <- createElement "div" doc
       setAttribute "style" "min-width:120px;" nameWrap
-      renderNodeName doc nameWrap node
+      renderNodeName doc nameWrap ctx.depth ctx.index node
         { onRename: \nodeId name parentExternalId nodeOrder ->
             pushRename { nodeId, name, parentExternalId, nodeOrder }
         , onSelect: pushSelect
