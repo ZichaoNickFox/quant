@@ -30,3 +30,4 @@ purescript/.spago
 purescript/output
 static/ps-bundle.js
 test-results/
+push
